@@ -4,7 +4,7 @@ def hello() -> str:
     return "Hello world!"
 #hello!!
 #commenting to test the system
-
+#next test
 
 def main():
     """Вызывается при запуске файла на выполнение"""
