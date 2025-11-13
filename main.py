@@ -1,6 +1,8 @@
 def hello() -> str:
     """Возвращает приветствие Hello World!"""
+    
     return "Hello world!"
+#hello!!
 
 
 def main():
