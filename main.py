@@ -22,10 +22,13 @@ def gcd_iterative_slow(a: int, b: int) -> int:
     """
     a = abs(a)
     b = abs(b)
-    
-    while b > 0:
-        a, b = b, a - b
-    return a
+
+    while a != 0 and b != 0:
+        if a > b:
+            a -= b
+        else:
+            b -= a
+    return a or b
 
 
 
