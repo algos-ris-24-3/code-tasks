@@ -20,6 +20,9 @@ def gcd_iterative_slow(a: int, b: int) -> int:
     :param b: целое число b
     :return: значение наибольшего общего делителя
     """
+    a = abs(a)
+    b = abs(b)
+    
     while b > 0:
         a, b = b, a - b
     return a
