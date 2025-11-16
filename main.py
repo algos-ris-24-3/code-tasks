@@ -25,7 +25,7 @@ def fibonacci_iter(n: int) -> int:
     if n == 1 or n == 2:
         return 1
     
-    fib = [0] * n
+    fib = [0] * (n + 1)
     fib[1] = 1
 
     for i in range(2, n + 1):
@@ -45,7 +45,7 @@ def fibonacci(n: int) -> int:
     if n in (1, 2):
         return 1
     a, b = 1, 1
-    for _ in range(2, n+1):
+    for _ in range(3, n+1):
         a, b = b, a + b
     return b
     
