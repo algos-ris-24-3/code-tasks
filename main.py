@@ -1,6 +1,5 @@
 import time
 
-
 def gcd_recursive(a: int, b: int) -> int:
     """Вычисляет наибольший общий делитель двух целых чисел.
     Рекурсивная реализация
@@ -46,6 +45,9 @@ def gcd_iterative_fast(a: int, b: int) -> int:
     :param b: целое число b
     :return: значение наибольшего общего делителя
     """
+    a = abs(a)
+    b = abs(b)
+    
     while b > 0:
         a, b = b, a % b
     return a
