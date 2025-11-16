@@ -24,24 +24,13 @@ def gcd_iterative_slow(a: int, b: int) -> int:
 
 
 def gcd_iterative_fast(a: int, b: int) -> int:
-    """Вычисляет наибольший общий делитель двух целых чисел.
-    Быстрая итеративная реализация
-
-    :param a: целое число a
-    :param b: целое число b
-    :return: значение наибольшего общего делителя
-    """
-    pass
+    while b > 0:
+        a, b = b, a % b
+    return a
 
 
 def lcm(a: int, b: int) -> int:
-    """Вычисляет наименьшее общее кратное двух натуральных чисел
-
-    :param a: натуральное число a
-    :param b: натуральное число b
-    :return: значение наименьшего общего кратного
-    """
-    pass
+    return a * b / gcd_iterative_fast(a,b)
 
 
 def main():
