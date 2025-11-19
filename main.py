@@ -1,6 +1,3 @@
-from profilehooks import profile
-
-
 def fibonacci_rec(n: int) -> int:
     if n == 1 or n == 2:
         return 1
