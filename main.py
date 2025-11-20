@@ -6,9 +6,53 @@ def get_tridiagonal_determinant(matrix: list[list[int]]) -> int:
     """
     pass
 
+def validate_matrix(matrix: list[list[int]]):
+    #Проверка на None
+    if matrix is None:
+        raise Exception("Матрица не может быть пустой")
+    
+    n = len(matrix)
+
+    #Проверка на пустой список
+    if n == 0:
+        raise Exception("Матрица не может быть пустой")
+    
+    #Проверка на квадратную матрицу
+    for i, row in enumerate(matrix):
+        if len(row) != n:
+            raise Exception("Матрица должна быть квадратной")
+    
+    #Проверка элементов вне диагоналей
+    for i in range(n):
+        for y in range(n):
+            if abs(i-y) <= 1:
+                continue
+            if matrix[i][y] != 0:
+                raise Exception("Ненулевой элемент вне диагоналях матрицы")
+    
+    #Проверка элементов на диагоналях
+    a = matrix[0][0] #главная диагональ
+    b = matrix[0][1] #верхняя диагональ
+    c = matrix[1][0] #нижняя диагональ
+    for i in range(1, n):
+        if matrix[i][i] != a:
+            raise Exception("Неверное значение на главной диагонали матрицы")
+    for i in range(n-1):
+        if matrix[i][i+1] != b:
+            raise Exception("Неверное значение на верхней диагонали матрицы")
+    for i in range(1, n):
+        if matrix[i][i-1] != c:
+            raise Exception("Неверное значение на нижней диагонали матрицы")
 
 def main():
     matrix = [[2, -3, 0, 0], [5, 2, -3, 0], [0, 5, 2, -3], [0, 0, 5, 2]]
+
+    try:
+        validate_matrix(matrix)
+        print("Матрица корректна")
+    except Exception as error:
+        print(f"Ошибка валидации: {error}")
+
     print("Трехдиагональная матрица")
     for row in matrix:
         print(row)
