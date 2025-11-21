@@ -84,6 +84,7 @@ def main():
         print("Матрица корректна")
     except Exception as error:
         print(f"Ошибка валидации: {error}")
+        exit()
 
     print("Трехдиагональная матрица")
     for row in matrix:
