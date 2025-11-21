@@ -4,8 +4,18 @@ def get_tridiagonal_determinant(matrix: list[list[int]]) -> int:
 
     :return: значение определителя.
     """
-    pass
+    n=len(matrix)
+    # Базовый случай: Матрица 1x1 (1 элемент)
+    if n == 1:
+        return matrix[0][0]
 
+    # Базовый случай: Матрица 2x2 (4 элемента)
+    if n == 2:
+        # Извлекаем a, b, c для формулы определителя
+        a, b, c = matrix[0][0], matrix[0][1], matrix[1][0]
+        return a * a - b * c
+
+ 
 def validate_matrix(matrix: list[list[int]]):
     #Проверка на None
     if matrix is None:
