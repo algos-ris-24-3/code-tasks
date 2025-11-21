@@ -4,16 +4,29 @@ def get_tridiagonal_determinant(matrix: list[list[int]]) -> int:
 
     :return: значение определителя.
     """
+
+    validate_matrix(matrix)
+
     n=len(matrix)
-    # Базовый случай: Матрица 1x1 (1 элемент)
+
     if n == 1:
         return matrix[0][0]
 
+    a, b, c = matrix[0][0], matrix[0][1], matrix[1][0]
+
+    return recursion_determinant(n, a, b, c)
+    
+
+def recursion_determinant(n, a, b, c):
+    # Базовый случай: Матрица 1x1 (1 элемент)
+    if n == 1:
+        return a
+
     # Базовый случай: Матрица 2x2 (4 элемента)
     if n == 2:
-        # Извлекаем a, b, c для формулы определителя
-        a, b, c = matrix[0][0], matrix[0][1], matrix[1][0]
         return a * a - b * c
+    
+    return (a * recursion_determinant(n - 1, a, b, c) - b * c * recursion_determinant(n - 2, a, b, c))
 
  
 def validate_matrix(matrix: list[list[int]]):
@@ -42,11 +55,17 @@ def validate_matrix(matrix: list[list[int]]):
     
     #Проверка элементов на диагоналях
     a = matrix[0][0] #главная диагональ
-    b = matrix[0][1] #верхняя диагональ
-    c = matrix[1][0] #нижняя диагональ
+
+    if n == 1:
+        return
+
     for i in range(1, n):
         if matrix[i][i] != a:
             raise Exception("Неверное значение на главной диагонали матрицы")
+        
+    b = matrix[0][1] #верхняя диагональ
+    c = matrix[1][0] #нижняя диагональ
+
     for i in range(n-1):
         if matrix[i][i+1] != b:
             raise Exception("Неверное значение на верхней диагонали матрицы")
