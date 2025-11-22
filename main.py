@@ -26,7 +26,7 @@ def get_reduced_matrix(matrix, row_idx, col_idx):
     :param matrix: целочисленная квадратная матрица
     :param row_idx: индекс строки для удаления
     :param col_idx: индекс столбца для удаления
-    :return: матрица с уменьшенным рангом
+    :return: матрица c уменьшенным рангом
     """
     reduced_matrix = []
     
