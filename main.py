@@ -7,72 +7,74 @@ def get_tridiagonal_determinant(matrix: list[list[int]]) -> int:
 
     validate_matrix(matrix)
 
-    n = len(matrix)
+    matrix_order = len(matrix)
 
-    if n == 1:
+    if matrix_order == 1:
         return matrix[0][0]
 
-    a, b, c = matrix[0][0], matrix[0][1], matrix[1][0]
+    main_diagonal, upper_diagonal, lower_diagonal = (
+        matrix[0][0],
+        matrix[0][1],
+        matrix[1][0],
+    )
 
-    return recursion_determinant(n, a, b, c)
+    return recursion_determinant(
+        matrix_order, main_diagonal, upper_diagonal, lower_diagonal
+    )
 
 
-def recursion_determinant(n, a, b, c):
-    # Базовый случай: Матрица 1x1 (1 элемент)
-    if n == 1:
-        return a
+def recursion_determinant(matrix_order, main_diagonal, upper_diagonal, lower_diagonal):
+    if matrix_order == 1:
+        return main_diagonal
 
-    # Базовый случай: Матрица 2x2 (4 элемента)
-    if n == 2:
-        return a * a - b * c
+    if matrix_order == 2:
+        return main_diagonal * main_diagonal - upper_diagonal * lower_diagonal
 
-    return a * recursion_determinant(n - 1, a, b, c) - b * c * recursion_determinant(
-        n - 2, a, b, c
+    return main_diagonal * recursion_determinant(
+        matrix_order - 1, main_diagonal, upper_diagonal, lower_diagonal
+    ) - upper_diagonal * lower_diagonal * recursion_determinant(
+        matrix_order - 2, main_diagonal, upper_diagonal, lower_diagonal
     )
 
 
 def validate_matrix(matrix: list[list[int]]):
-    # Проверка на None
     if matrix is None:
         raise Exception("Матрица не может быть пустой")
 
-    n = len(matrix)
+    matrix_order = len(matrix)
 
-    # Проверка на пустой список
-    if n == 0:
+    if matrix_order == 0:
         raise Exception("Матрица не может быть пустой")
 
-    # Проверка на квадратную матрицу
-    for i, row in enumerate(matrix):
-        if len(row) != n:
+    for row in matrix:
+        if len(row) != matrix_order:
             raise Exception("Матрица должна быть квадратной")
 
-    # Проверка элементов вне диагоналей
-    for i in range(n):
-        for y in range(n):
-            if abs(i - y) <= 1:
+    for row in range(matrix_order):
+        for column in range(matrix_order):
+            if abs(row - column) <= 1:
                 continue
-            if matrix[i][y] != 0:
+            if matrix[row][column] != 0:
                 raise Exception("Ненулевой элемент вне диагоналях матрицы")
 
-    # Проверка элементов на диагоналях
-    a = matrix[0][0]  # главная диагональ
+    main_diagonal = matrix[0][0]
 
-    if n == 1:
+    if matrix_order == 1:
         return
 
-    for i in range(1, n):
-        if matrix[i][i] != a:
+    # i - строка и столбец одновременно
+    for i in range(1, matrix_order):
+        if matrix[i][i] != main_diagonal:
             raise Exception("Неверное значение на главной диагонали матрицы")
 
-    b = matrix[0][1]  # верхняя диагональ
-    c = matrix[1][0]  # нижняя диагональ
+    upper_diagonal = matrix[0][1]
+    lower_diagonal = matrix[1][0]
 
-    for i in range(n - 1):
-        if matrix[i][i + 1] != b:
+    for i in range(matrix_order - 1):
+        if matrix[i][i + 1] != upper_diagonal:
             raise Exception("Неверное значение на верхней диагонали матрицы")
-    for i in range(1, n):
-        if matrix[i][i - 1] != c:
+    for i in range(1, matrix_order):
+        if matrix[i][i - 1] != lower_diagonal:
             raise Exception("Неверное значение на нижней диагонали матрицы")
 
 
