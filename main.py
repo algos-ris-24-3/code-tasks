@@ -6,9 +6,9 @@ def calculate_determinant(matrix: list[list[int]]) -> int:
     квадратной матрицей
     :return: значение определителя
     """
-    def check_input_data(matrix):
+    check_data(matrix)
 
-        return basic_calculate_determinant(matrix)
+    return basic_calculate_determinant(matrix)
 
 
     
