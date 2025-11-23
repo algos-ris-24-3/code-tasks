@@ -6,10 +6,9 @@ def calculate_determinant(matrix: list[list[int]]) -> int:
     квадратной матрицей
     :return: значение определителя
     """
-    throw_exception(matrix)
+    def check_input_data(matrix):
 
-    result = basic_calculate_determinant(matrix)
-    return (result)
+        return basic_calculate_determinant(matrix)
 
 
     
@@ -20,18 +19,22 @@ def basic_calculate_determinant(matrix: list[list[int]]) -> int:
     
     det = 0 
     for index, value in enumerate(matrix[0]):
-        det += value * (-1) ** index * basic_calculate_determinant(_get_minor(matrix, 0, index))
+        det += value * (-1) ** index * basic_calculate_determinant(_get_matrix_lower(matrix, 0, index))
     return det
 
-def throw_exception(matrix):
-   if not matrix or not isinstance(matrix, list):
-      raise Exception("error: matrix was not given")
-   if len(matrix) != len(matrix[0]): 
-       raise Exception("error: matrix is not square")
+def check_data(matrix):
+    if not matrix or not isinstance(matrix, list):
+        raise Exception("error: matrix was not given")
+    n = len(matrix)
+    for row in matrix:
+        if not isinstance(row, list) or len(row) != n:
+            raise Exception("error: matrix is not square")
+    if n == 0: 
+        raise Exception("error: matrix is empty")
 
-def _get_minor(matrix, row_index, col_index): 
+def _get_matrix_lower(matrix, row_index, col_index): 
     length_matrix = len(matrix)
-    minor = []
+    matrix_lower = []
     for i in range(length_matrix):
         if i == row_index:
             continue
@@ -40,8 +43,8 @@ def _get_minor(matrix, row_index, col_index):
             if j == col_index:
                 continue
             row.append(matrix[i][j])
-        minor.append(row)
-    return minor
+        matrix_lower.append(row)
+    return matrix_lower
 
 
 def main():
