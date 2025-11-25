@@ -17,32 +17,23 @@ def get_tridiagonal_determinant(matrix: list[list[int]]) -> int:
     b = matrix[0][1]
     c = matrix[1][0]
 
-    return a * get_tridiagonal_determinant(get_reduced_matrix(matrix)) - b * c * get_tridiagonal_determinant(get_reduced_matrix(get_reduced_matrix(matrix)))
+    return calculate_tridiagonal_det(n, a, b, c)
 
-def get_reduced_matrix(matrix, remove_row=0, remove_col=0) -> list[list[int]]:
-    """Уменьшает порядок квадратной матрицы на единицу путем удаления указанных строки и столбца.
-    :param matrix: исходная квадратная матрица для уменьшения
-    :param remove_row: индекс строки для удаления, по умолчанию 0
-    :param remove_col: индекс столбца для удаления, по умолчанию 0  
+def calculate_tridiagonal_det(n: int, a: int, b: int, c: int) -> int:
+    """Вычисляет определитель трехдиагональной матрицы с постоянными диагоналями.
+    :param n: размер матрицы
+    :param a: значение на главной диагонали
+    :param b: значение на верхней диагонали
+    :param c: значение на нижней диагонали
     
-    :return: матрица уменьшенного порядка (n-1) x (n-1)
+    :return: значение определителя
     """
-    n = len(matrix)
-    reduced_matrix = []
+    if n == 1:
+        return a
+    elif n == 2:
+        return a * a - b * c
     
-    for i in range(n):
-        if i == remove_row:
-            continue
-        
-        new_row = []
-        for j in range(n):
-            if j == remove_col:
-                continue
-            new_row.append(matrix[i][j])
-        
-        reduced_matrix.append(new_row)
-    
-    return reduced_matrix
+    return a * calculate_tridiagonal_det(n - 1, a, b, c) - b * c * calculate_tridiagonal_det(n - 2, a, b, c)
 
 def checking_conditions(matrix):
     """Проверяет, является ли матрица трехдиагональной с постоянными значениями на диагоналях.
