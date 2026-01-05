@@ -15,7 +15,7 @@ def validate_matrix(price_table):
         raise ValueError(PARAM_ERR_MSG)
     
     for row in price_table:
-        if type(row) is not list:
+        if not isinstance(row, list):
             raise ValueError(PARAM_ERR_MSG)
 
     if not price_table[0]:
