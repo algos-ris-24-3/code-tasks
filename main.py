@@ -55,25 +55,30 @@ def get_min_cost_path(
                     else:
                         path_cost[row_idx][col_idx] = min_cost + price_table_value
                 
-    path = []
-    i, j = row_count, col_count
-    while i > 1 or j > 1:
-        path.append((i-1, j-1))
-        if i > 1 or j > 1:
-            if path_cost [i - 1][j] <= path_cost [i][j - 1]:
+    min_cost = path_cost[row_count][col_count]
+    
+    if min_cost != INF:
+        path = []
+        i, j = row_count, col_count
+        while i > 1 or j > 1:
+            path.append((i - 1, j - 1))
+            if i > 1 or j > 1:
+                if path_cost[i - 1][j] <= path_cost[i][j - 1]:
+                    i -= 1
+                else:
+                    j -= 1
+            elif i > 1:
                 i -= 1
             else:
                 j -= 1
-        elif i > 1:
-            i -= 1
-        else:
-            j -= 1
 
-    path.append((0, 0))
-    path.reverse()
-    min_cost = path_cost[row_count][col_count]
+        path.append((0, 0))
+        path.reverse()
+        min_cost = path_cost[row_count][col_count]
 
-    return Result(cost=min_cost, path=path)
+        return Result(cost=min_cost, path=path)
+    else:
+        return Result(cost=None, path=None)
 
 def main():
     table = [[1, 2, 2], [3, 4, 2], [1, 1, 2]]
