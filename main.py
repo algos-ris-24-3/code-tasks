@@ -29,7 +29,7 @@ def validate_matrix(profit_matrix: list[list[int]]) -> None:
     :raise ValueError: Если структура матрицы неверна.
     :raise ProfitValueError: Если значения отрицательные или убывают.
     """
-    if not isinstance(profit_matrix, list) or not profit_matrix:
+    if not profit_matrix or not isinstance(profit_matrix, list):
         raise ValueError(ErrorMessages.WRONG_MATRIX)
 
     rows_count = len(profit_matrix)
@@ -67,25 +67,25 @@ def get_profit(profit_matrix: list[list[int]], project_idx: int, investment: int
     return profit_matrix[investment - 1][project_idx]
 
 
-def reconstruct_paths(choices: list[list[list[int]]], p_idx: int, cap: int) -> list[list[int]]:
+def reconstruct_paths(choices: list[list[list[int]]], projects_num: int, cap: int) -> list[list[int]]:
     """Рекурсивно восстанавливает все варианты распределения инвестиций.
 
     :param choices: Таблица выбора оптимальных вложений.
-    :param p_idx: Текущий индекс проекта.
+    :param projects_num: Текущий индекс проекта.
     :param cap: Текущий остаток капитала.
     :return: Матрица с распределением инвестиций.
     """
-    if p_idx == 0:
+    if projects_num == 0:
         return [[]]
 
     paths = []
 
-    possible_investments = choices[p_idx][cap]
+    possible_investments = choices[projects_num][cap]
     
     for invest in possible_investments:
         remaining_cap = cap - invest
 
-        prev_paths = reconstruct_paths(choices, p_idx - 1, remaining_cap)
+        prev_paths = reconstruct_paths(choices, projects_num - 1, remaining_cap)
         
         for path in prev_paths:
             paths.append(path + [invest])
