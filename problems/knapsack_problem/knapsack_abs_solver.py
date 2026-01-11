@@ -106,6 +106,8 @@ class KnapsackAbstractSolver(ABC):
         if len(items) == 0:
             raise ValueError(ErrorMessageTemplateEnum.EMPTY_LIST.format(list_name))
         for item in items:
+            if isinstance(item, float):
+                raise ValueError(ErrorMessageEnum.FLOAT_WEIGHT)
             if not isinstance(item, int):
                 raise TypeError(ErrorMessageTemplateEnum.NOT_INT.format(list_name))
             if item < 1:

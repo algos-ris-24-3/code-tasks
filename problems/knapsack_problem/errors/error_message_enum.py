@@ -1,7 +1,7 @@
 from strenum import StrEnum
 
 
-class ErrorMessageEnum(StrEnum):
+class  ErrorMessageEnum(StrEnum):
     """Перечисление сообщений об ошибках."""
 
     LENGTHS_NOT_EQUAL = "Списки весов и стоимости разной длины"
@@ -10,3 +10,4 @@ class ErrorMessageEnum(StrEnum):
     LESS_WEIGHT_LIMIT = (
         "Ограничение вместимости рюкзака меньше чем " "минимальный вес предмета"
     )
+    FLOAT_WEIGHT = "Веса должны быть целочисленными"
