@@ -29,19 +29,31 @@ def get_min_cost_path(
     path_cost[1][1] = price_table[0][0]
 
     for j in range(2, col_count):
-        path_cost[1][j] = path_cost[1][j-1] + price_table[0][j-1]
+        if path_cost[1][j - 1] == INF or price_table[0][j - 1] is None:
+            path_cost[1][j] = INF
+        else:
+            path_cost[1][j] = path_cost[1][j - 1] + price_table[0][j - 1]
 
     for i in range(2, row_count):
-        path_cost[i][1] = path_cost[i-1][1] + price_table[i-1][0]
+        if path_cost[i - 1][1] == INF or price_table[i - 1][0] is None:
+            path_cost[i][1] = INF
+        else:
+            path_cost[i][1] = path_cost[i - 1][1] + price_table[i - 1][0]
 
     for row_idx in range(1, row_count + 1):
-        for col_idx in range (1, col_count + 1):
+        for col_idx in range(1, col_count + 1):
             if row_idx == 1 and col_idx == 1:
                 continue
             else:
                 price_table_value = price_table[row_idx - 1][col_idx - 1]
-                min_cost = min(path_cost[row_idx - 1][col_idx], path_cost[row_idx ][col_idx - 1])
-                path_cost[row_idx][col_idx] = min_cost + price_table_value
+                if price_table_value is None:
+                    path_cost[row_idx][col_idx] = INF
+                else:
+                    min_cost = min(path_cost[row_idx - 1][col_idx], path_cost[row_idx][col_idx - 1])
+                    if min_cost == INF:
+                        path_cost[row_idx][col_idx] = INF
+                    else:
+                        path_cost[row_idx][col_idx] = min_cost + price_table_value
                 
     path = []
     i, j = row_count, col_count
