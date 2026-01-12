@@ -16,10 +16,10 @@ class TestDynamicSolver(unittest.TestCase, TestAbstractSolver):
         в списке весов."""
         with self.assertRaises(ValueError) as error:
             self.solver([1, 1.1], [1, 1], 1)
-        #self.assertEqual(
-        #   ErrorMessageEnum.FLOAT_WEIGHT,
-        #    str(error.exception),
-        #)
+        self.assertEqual(
+           ErrorMessageEnum.FLOAT_WEIGHT,
+            str(error.exception),
+        )
 
 
 if __name__ == "__main__":
