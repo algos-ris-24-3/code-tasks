@@ -24,17 +24,33 @@ def get_min_cost_path(
     row_count = len(price_table) 
     col_count = len(price_table[0])
 
+    if row_count == 0:
+        raise ValueError(PARAM_ERR_MSG)
+        
+    for i in range(row_count):
+        if len(price_table[i]) != col_count:
+            raise ValueError(PARAM_ERR_MSG)
+    
+    for i in range(row_count):
+        for j in range(col_count):
+            value = price_table[i][j]
+            if value is not None and not isinstance(value, (int, float)):
+                raise ValueError(PARAM_ERR_MSG)
+
+    if price_table[0][0] is None or price_table[row_count - 1][col_count - 1] is None:
+        return Result(cost=None, path=None)
+
     path_cost = [[INF] * (col_count + 1) for _ in range(row_count + 1)]
 
     path_cost[1][1] = price_table[0][0]
 
-    for j in range(2, col_count):
+    for j in range(2, col_count + 1):
         if path_cost[1][j - 1] == INF or price_table[0][j - 1] is None:
             path_cost[1][j] = INF
         else:
             path_cost[1][j] = path_cost[1][j - 1] + price_table[0][j - 1]
 
-    for i in range(2, row_count):
+    for i in range(2, row_count + 1):
         if path_cost[i - 1][1] == INF or price_table[i - 1][0] is None:
             path_cost[i][1] = INF
         else:
@@ -60,9 +76,11 @@ def get_min_cost_path(
     if min_cost != INF:
         path = []
         i, j = row_count, col_count
+        
         while i > 1 or j > 1:
             path.append((i - 1, j - 1))
-            if i > 1 or j > 1:
+            
+            if i > 1 and j > 1:
                 if path_cost[i - 1][j] <= path_cost[i][j - 1]:
                     i -= 1
                 else:
@@ -71,12 +89,11 @@ def get_min_cost_path(
                 i -= 1
             else:
                 j -= 1
-
+        
         path.append((0, 0))
         path.reverse()
-        min_cost = path_cost[row_count][col_count]
-
-        return Result(cost=min_cost, path=path)
+        
+        return Result(cost=min_cost, path=tuple(path))
     else:
         return Result(cost=None, path=None)
 
