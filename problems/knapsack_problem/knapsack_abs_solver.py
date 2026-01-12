@@ -112,3 +112,18 @@ class KnapsackAbstractSolver(ABC):
                 raise TypeError(ErrorMessageTemplateEnum.NOT_INT.format(list_name))
             if item < 1:
                 raise ValueError(ErrorMessageTemplateEnum.NOT_POS.format(list_name))
+        if not isinstance(items, list):
+            raise TypeError(ErrorMessageTemplateEnum.NOT_LIST.format(list_name))
+        if len(items) == 0:
+            raise ValueError(ErrorMessageTemplateEnum.EMPTY_LIST.format(list_name))
+        for item in items:
+            if isinstance(item, float):
+                if list_name == WEIGHTS:
+                    raise ValueError(ErrorMessageEnum.FLOAT_WEIGHT)
+                else:
+                    raise TypeError(ErrorMessageTemplateEnum.NOT_INT.format(list_name)) 
+            if not isinstance(item, int):
+                raise TypeError(ErrorMessageTemplateEnum.NOT_INT.format(list_name))
+            if item < 1:
+                raise ValueError(ErrorMessageTemplateEnum.NOT_POS.format(list_name))
+
