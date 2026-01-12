@@ -21,6 +21,15 @@ def get_min_cost_path(
     cost - стоимость минимального пути,
     path - путь, список кортежей с индексами ячеек.
     """
+    if price_table is None:
+        raise ValueError(PARAM_ERR_MSG)
+    
+    if not price_table or len(price_table) == 0:
+        raise ValueError(PARAM_ERR_MSG)
+    
+    if len(price_table[0]) == 0:
+        raise ValueError(PARAM_ERR_MSG)
+        
     row_count = len(price_table) 
     col_count = len(price_table[0])
 
@@ -43,18 +52,20 @@ def get_min_cost_path(
     path_cost = [[INF] * (col_count + 1) for _ in range(row_count + 1)]
 
     path_cost[1][1] = price_table[0][0]
+    
+    if col_count > 1:
+        for j in range(2, col_count + 1):
+            if path_cost[1][j - 1] == INF or price_table[0][j - 1] is None:
+                path_cost[1][j] = INF
+            else:
+                path_cost[1][j] = path_cost[1][j - 1] + price_table[0][j - 1]
 
-    for j in range(2, col_count + 1):
-        if path_cost[1][j - 1] == INF or price_table[0][j - 1] is None:
-            path_cost[1][j] = INF
-        else:
-            path_cost[1][j] = path_cost[1][j - 1] + price_table[0][j - 1]
-
-    for i in range(2, row_count + 1):
-        if path_cost[i - 1][1] == INF or price_table[i - 1][0] is None:
-            path_cost[i][1] = INF
-        else:
-            path_cost[i][1] = path_cost[i - 1][1] + price_table[i - 1][0]
+    if row_count > 1:
+        for i in range(2, row_count + 1):
+            if path_cost[i - 1][1] == INF or price_table[i - 1][0] is None:
+                path_cost[i][1] = INF
+            else:
+                path_cost[i][1] = path_cost[i - 1][1] + price_table[i - 1][0]
 
     for row_idx in range(1, row_count + 1):
         for col_idx in range(1, col_count + 1):
@@ -76,7 +87,10 @@ def get_min_cost_path(
     if min_cost != INF:
         path = []
         i, j = row_count, col_count
-        
+
+        if row_count == 1 and col_count == 1:
+            return Result(cost=min_cost, path=[(0, 0)])
+            
         while i > 1 or j > 1:
             path.append((i - 1, j - 1))
             
@@ -93,7 +107,7 @@ def get_min_cost_path(
         path.append((0, 0))
         path.reverse()
         
-        return Result(cost=min_cost, path=tuple(path))
+        return Result(cost=min_cost, path=path)
     else:
         return Result(cost=None, path=None)
 
