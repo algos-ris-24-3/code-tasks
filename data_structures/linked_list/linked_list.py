@@ -31,7 +31,16 @@ class LinkedList:
         Аргументы:
             value: значение нового элемента.
         """
-        pass
+        node = ListNode(value)
+
+        if self.head is None:
+            self.head = node
+        else:
+            current = self.head
+            while current.next is not None:
+                current = current.next
+            current.next = node
+        self.size += 1
 
     def insert(self, index, value):
         """
@@ -87,7 +96,14 @@ class LinkedList:
             int: индекс элемента, если найден.
             None: если элемент отсутствует.
         """
-        pass
+        current = self.head
+        index = 0
+        while current is not None:
+            if current.value == value:
+                return index
+            current = current.next
+            index += 1
+        return None
 
     def __len__(self):
         """Возвращает количество элементов в списке."""
