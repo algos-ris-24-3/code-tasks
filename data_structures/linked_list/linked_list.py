@@ -98,7 +98,6 @@ class LinkedList:
         if not is_found:
             raise ValueError("Элемента с указанным значением нет в списке!")
 
-
     def index(self, value):
         """
         Возвращает индекс первого элемента с указанным значением.
