@@ -56,7 +56,25 @@ class LinkedList:
         Исключения:
             ValueError — если элемента с таким значением нет.
         """
-        pass
+        is_found = False
+
+        if self.head is not None and self.head.value == value:
+            self.head = self.head.next
+            self.size -= 1
+            is_found = True
+        else:
+            current = self.head
+            while current is not None and current.next is not None and not is_found:
+                if current.next.value == value:
+                    current.next = current.next.next
+                    self.size -= 1
+                    is_found = True
+                else:
+                    current = current.next
+
+        if not is_found:
+            raise ValueError("Элемента с указанным значением нет в списке!")
+
 
     def index(self, value):
         """
