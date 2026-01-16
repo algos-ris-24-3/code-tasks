@@ -53,7 +53,21 @@ class LinkedList:
         Исключения:
             IndexError — если индекс вне диапазона.
         """
-        pass
+        if index < 0 or index > self.size:
+            raise IndexError("Индекс вне диапазона!")
+
+        if index == 0:
+            new_node = ListNode(value)
+            new_node.next = self.head
+            self.head = new_node
+        else:
+            current = self.head
+            for _ in range(index - 1):
+                current = current.next
+            new_node = ListNode(value)
+            new_node.next = current.next
+            current.next = new_node
+        self.size += 1
 
     def remove(self, value):
         """
@@ -118,7 +132,10 @@ class LinkedList:
                 ...
 
         """
-        pass
+        current = self.head
+        while current is not None:
+            yield current.value
+            current = current.next
 
     def __str__(self):
         """
