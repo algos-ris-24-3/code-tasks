@@ -46,38 +46,32 @@ class ConveyorSchedule(AbstractSchedule):
 
         # Процедура заполняет пустую заготовку расписания для каждого
         # исполнителя объектами ScheduleItem.
-        self.__fill_schedule(ConveyorSchedule.__sort_tasks(tasks))
+        self.fill_schedule(ConveyorSchedule.sort_tasks(tasks))
 
     @property
     def duration(self) -> float:
         """Возвращает общую продолжительность расписания."""
         return self._executor_schedule[0][-1].end
 
-    def __fill_schedule(self, tasks: list[StagedTask]) -> None:
+    def fill_schedule(self, tasks: list[StagedTask]) -> None:
         """Процедура составляет расписание из элементов ScheduleItem для каждого
         исполнителя, согласно алгоритму Джонсона."""
 
-        # Время окончания работы каждого исполнителя
-        time_executor_0 = 0.0
-        time_executor_1 = 0.0
+        time_executor_0 = 0
+        time_executor_1 = 0
 
         for task in tasks:
             stage1_duration = task.stage_duration(0)
             stage2_duration = task.stage_duration(1)
 
-            # Первый исполнитель всегда работает последовательно без простоев
             start_stage1 = time_executor_0
             self._executor_schedule[0].append(
                 ScheduleItem(task, start_stage1, stage1_duration)
             )
             time_executor_0 = start_stage1 + stage1_duration
 
-            # Второй исполнитель не может начать раньше, чем:
-            # 1) освободится сам
-            # 2) завершится первый этап соответствующей задачи
             start_stage2 = max(time_executor_1, time_executor_0)
 
-            # Если второй исполнитель простаивает до начала работы над задачей
             if start_stage2 > time_executor_1:
                 self._executor_schedule[1].append(
                     ScheduleItem(
@@ -92,8 +86,6 @@ class ConveyorSchedule(AbstractSchedule):
             )
             time_executor_1 = start_stage2 + stage2_duration
 
-        # После завершения всех задач первый исполнитель может простаивать,
-        # пока второй исполнитель завершает свою работу
         if time_executor_1 > time_executor_0:
             self._executor_schedule[0].append(
                 ScheduleItem(
@@ -104,7 +96,7 @@ class ConveyorSchedule(AbstractSchedule):
             )
 
     @staticmethod
-    def __sort_tasks(tasks: list[StagedTask]) -> list[StagedTask]:
+    def sort_tasks(tasks: list[StagedTask]) -> list[StagedTask]:
         """Возвращает отсортированный список задач для применения
         алгоритма Джонсона."""
         first_stage_group: list[StagedTask] = []
@@ -118,8 +110,6 @@ class ConveyorSchedule(AbstractSchedule):
             else:
                 second_stage_group.append(task)
 
-        # Первая группа сортируется по возрастанию продолжительности первого этапа,
-        # вторая группа - по убыванию продолжительности второго этапа
         first_stage_group.sort(key=lambda t: t.stage_duration(0))
         second_stage_group.sort(key=lambda t: t.stage_duration(1), reverse=True)
 
