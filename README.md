@@ -67,3 +67,54 @@ gantt
     B         :b7, after a7 b6, 2h
     Окончание выполнения работ : milestone, m2, 02 04:00, 0h
 ```
+
+## Диаграмма классов пакета schedules (Вариант 1)
+
+```mermaid
+classDiagram
+    class Task {
+        - str _name
+        - int|float _duration
+        + str name
+        + int|float duration
+    }
+
+    class StagedTask {
+        - list[int|float] _stage_durations
+        + int stage_count
+        + tuple[int|float] stage_durations
+        + stage_duration(stage_idx: int) int|float
+    }
+
+    class ScheduleItem {
+        - Task|None __task
+        - float __start
+        - float __duration
+        + str task_name
+        + bool is_downtime
+        + float start
+        + float duration
+        + float end
+    }
+
+    class AbstractSchedule {
+        - list[Task] _tasks
+        - list[list[ScheduleItem]] _executor_schedule
+        + tuple[Task] tasks
+        + int task_count
+        + int executor_count
+        + float duration
+        + get_schedule_for_executor(executor_idx: int) tuple[ScheduleItem]
+        + get_executor_downtime(executor_idx: int) float
+        + get_total_downtime() float
+    }
+
+    class ConveyorSchedule {
+        + float duration
+    }
+
+    Task <-- StagedTask
+    AbstractSchedule <-- ConveyorSchedule
+    ScheduleItem --> Task
+    AbstractSchedule <-- ScheduleItem
+```

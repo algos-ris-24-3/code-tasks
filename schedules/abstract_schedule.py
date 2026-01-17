@@ -75,6 +75,36 @@ class AbstractSchedule(ABC):
         """Возвращает общую продолжительность расписания."""
         pass
 
+    def get_executor_downtime(self, executor_idx: int) -> float:
+        """Возвращает суммарное время простоя для указанного исполнителя.
+
+        Метод не зависит от конкретного алгоритма построения расписания и
+        корректно работает для любых наследников AbstractSchedule.
+
+        :param executor_idx: Индекс исполнителя.
+        :raise ScheduleArgumentError: Если индекс исполнителя не является целым
+         неотрицательным числом или превышает количество исполнителей.
+        :return: Суммарное время простоя исполнителя.
+        """
+        self.__validate_executor_idx(executor_idx)
+        executor_schedule = self._executor_schedule[executor_idx]
+        return sum(
+            item.duration for item in executor_schedule if item.is_downtime
+        )
+
+    def get_total_downtime(self) -> float:
+        """Возвращает суммарное время простоя по всем исполнителям.
+
+        Метод не зависит от конкретного алгоритма построения расписания и
+        корректно работает для любых наследников AbstractSchedule.
+
+        :return: Суммарное время простоя по всем исполнителям.
+        """
+        return sum(
+            self.get_executor_downtime(executor_idx)
+            for executor_idx in range(self.executor_count)
+        )
+
     def get_schedule_for_executor(self, executor_idx: int) -> tuple[ScheduleItem]:
         """Возвращает расписание для указанного исполнителя.
 
