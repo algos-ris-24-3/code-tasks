@@ -73,48 +73,73 @@ gantt
 ```mermaid
 classDiagram
     class Task {
-        - str _name
-        - int|float _duration
-        + str name
-        + int|float duration
+        _name: str
+        _duration: int | float
+        init(name: str, duration: int | float)
+        str() str
+        eq(other) bool
+        ne(other) bool
+        hash() int
+        name() str
+        duration() int | float
+        __validate_params(name: str, duration: int | float) None
     }
 
     class StagedTask {
-        - list[int|float] _stage_durations
-        + int stage_count
-        + tuple[int|float] stage_durations
-        + stage_duration(stage_idx: int) int|float
+        _stage_durations: list[int | float]
+        init(name: str, stage_durations: list[int | float])
+        str() str
+        eq(other) bool
+        ne(other) bool
+        hash() int
+        stage_count() int
+        stage_durations() tuple[int | float]
+        stage_duration(stage_idx: int) int | float
+        __validate_params(name: str, stage_durations: list[int | float]) None
+        __validate_stage_idx(stage_idx: int) None
     }
 
     class ScheduleItem {
-        - Task|None __task
-        - float __start
-        - float __duration
-        + str task_name
-        + bool is_downtime
-        + float start
-        + float duration
-        + float end
+        _task: Task | None
+        _start: float
+        _duration: float
+        ScheduleItem(task: Task | None, start: float, duration: float)
+        task_name() str
+        is_downtime() bool
+        start() float
+        duration() float
+        end() float
+        str() str
+        eq(other) bool
+        ne(other) bool
+        hash() int
+        __validate_params(task: Task | None, start: float, duration: float) None
     }
 
     class AbstractSchedule {
-        - list[Task] _tasks
-        - list[list[ScheduleItem]] _executor_schedule
-        + tuple[Task] tasks
-        + int task_count
-        + int executor_count
-        + float duration
-        + get_schedule_for_executor(executor_idx: int) tuple[ScheduleItem]
-        + get_executor_downtime(executor_idx: int) float
-        + get_total_downtime() float
+        _tasks: list[Task]
+        _executor_schedule: list[list[ScheduleItem]]
+        AbstractSchedule(tasks: list[Task], executor_count: int)
+        str() str
+        tasks() tuple[Task]
+        task_count() int
+        executor_count() int
+        duration()* float
+        get_executor_downtime(executor_idx: int) float
+        get_total_downtime() float
+        get_schedule_for_executor(executor_idx: int) tuple[ScheduleItem]
+        __validate_params(tasks: list[Task]) None
+        __validate_executor_idx(executor_idx: int) None
     }
 
     class ConveyorSchedule {
-        + float duration
+        ConveyorSchedule(tasks: list[StagedTask])
+        duration float
+        fill_schedule(tasks: list[StagedTask]) None
+        sort_tasks(tasks: list[StagedTask]) list[StagedTask]
+        __validate_params(tasks: list[StagedTask]) None
     }
 
-    Task <-- StagedTask
-    AbstractSchedule <-- ConveyorSchedule
-    ScheduleItem --> Task
-    AbstractSchedule <-- ScheduleItem
+    ConveyorSchedule --|> AbstractSchedule
+    StagedTask --|> Task
 ```
