@@ -62,7 +62,30 @@ class ConveyorSchedule(AbstractSchedule):
     def __sort_tasks(tasks: list[StagedTask]) -> list[StagedTask]:
         """Возвращает отсортированный список задач для применения
         алгоритма Джонсона."""
-        pass
+        
+        first_group = []
+        second_group = []
+
+        for task in tasks:
+            first_stage_time = task.stage_duration(0)
+            second_stage_time = task.stage_duration(1)
+
+            if first_stage_time <= second_stage_time:
+                first_group.append(task,first_stage_time)
+            else:
+                second_group.append(task,second_stage_time)
+
+        first_group.sort(key = lambda x: x[1])
+        second_group.sort(key = lambda x: x[1], reverse = True)
+
+        result = []
+        for task, _ in first_group:
+            result.append(task)
+        
+        for task, _ in second_group:
+            result.append(task)
+        
+        return result
 
     @staticmethod
     def __validate_params(tasks: list[StagedTask]) -> None:
