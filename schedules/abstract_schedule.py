@@ -52,7 +52,7 @@ class AbstractSchedule(ABC):
 
     def __str__(self):
         return SCHEDULE_STR_TEMPL.format(
-            self.duration, self.task_count, self.executor_count
+            int(self.duration), self.task_count, self.executor_count
         )
 
     @property
