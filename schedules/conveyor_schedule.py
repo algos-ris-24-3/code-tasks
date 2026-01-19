@@ -71,9 +71,9 @@ class ConveyorSchedule(AbstractSchedule):
             second_stage_time = task.stage_duration(1)
 
             if first_stage_time <= second_stage_time:
-                first_group.append(task,first_stage_time)
+                first_group.append((task,first_stage_time))
             else:
-                second_group.append(task,second_stage_time)
+                second_group.append((task,second_stage_time))
 
         first_group.sort(key = lambda x: x[1])
         second_group.sort(key = lambda x: x[1], reverse = True)
