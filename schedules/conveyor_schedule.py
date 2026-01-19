@@ -51,18 +51,66 @@ class ConveyorSchedule(AbstractSchedule):
     @property
     def duration(self) -> float:
         """Возвращает общую продолжительность расписания."""
-        return self._executor_schedule[0][-1].end
+        return self._executor_schedule[1][-1].end
 
     def __fill_schedule(self, tasks: list[StagedTask]) -> None:
         """Процедура составляет расписание из элементов ScheduleItem для каждого
         исполнителя, согласно алгоритму Джонсона."""
-        pass
+        
+        time_first = 0.0
+        time_second = 0.0
+
+        for task in tasks:
+            duration_first = task.stage_duration(0)
+            duration_second = task.stage_duration(1)
+            
+            start_first = time_first
+            end_first = start_first + duration_first
+
+            start_second = max(end_first, time_second)
+            end_second = start_second + duration_second
+            
+            item_first = ScheduleItem(
+                task=task,
+                start=start_first,
+                duration=duration_first
+            )
+        
+            item_second = ScheduleItem(
+                task=task,
+                start=start_second,
+                duration=duration_second
+            )
+            
+            self._executor_schedule[0].append(item_first)
+            self._executor_schedule[1].append(item_second)
+        
+            time_first = end_first
+            time_second = end_second
 
     @staticmethod
     def __sort_tasks(tasks: list[StagedTask]) -> list[StagedTask]:
         """Возвращает отсортированный список задач для применения
         алгоритма Джонсона."""
-        pass
+        
+        group1 = []
+        group2 = []
+        
+        for task in tasks:
+            duration_first = task.stage_duration(0)
+            duration_second = task.stage_duration(1)
+            
+            if duration_first <= duration_second:
+                group1.append((task, duration_first))
+            else:
+                group2.append((task, duration_second))
+
+        group1.sort(key=lambda x: x[1])
+        group2.sort(key=lambda x: x[1], reverse=True)
+
+        sorted_tasks = [task_duration_pair[0] for task_duration_pair in group1] + [task_duration_pair[0] for task_duration_pair in group2]
+        
+        return sorted_tasks
 
     @staticmethod
     def __validate_params(tasks: list[StagedTask]) -> None:

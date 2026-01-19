@@ -4,6 +4,7 @@ from schedules.constants import SCHEDULE_STR_TEMPL
 from schedules.errors import ErrorMessages, ErrorTemplates, ScheduleArgumentError
 from schedules.schedule_item import ScheduleItem
 from schedules.task import Task
+from schedules.staged_task import StagedTask
 
 
 class AbstractSchedule(ABC):
@@ -74,6 +75,36 @@ class AbstractSchedule(ABC):
     def duration(self) -> float:
         """Возвращает общую продолжительность расписания."""
         pass
+
+    def to_mermaid_gantt(self) -> str:
+        """Возвращает строку с описанием диаграммы Ганта в формате Mermaid."""
+        mermaid_lines = [
+            "```mermaid",
+            "gantt",
+            "    title Расписание выполнения задач",
+            "    dateFormat mm",
+            "    axisFormat %M"
+        ]
+        for executor_idx in range(self.executor_count):
+            schedule = self.get_schedule_for_executor(executor_idx)
+            mermaid_lines.append(f"    section Исполнитель {executor_idx+1}")
+            for item in schedule:
+                start_time = item.start
+                duration_time = item.duration
+                task_name = item.task_name
+                if isinstance(item.task_name, StagedTask):
+                    try:
+                        if hasattr(item, "stage_idx"):
+                            task_name = f"{item.task_name} (этап {getattr(item, "stage_idx")+1})"
+                    except:
+                        pass
+                mermaid_lines.append(
+                    f"    {task_name} :active, task_{executor_idx}_{item.task_name}, "
+                    f"{start_time:02.0f}, {duration_time}m"
+                )
+        mermaid_lines.append("```")
+        return "\n".join(mermaid_lines)
+
 
     def get_schedule_for_executor(self, executor_idx: int) -> tuple[ScheduleItem]:
         """Возвращает расписание для указанного исполнителя.
