@@ -90,7 +90,7 @@ class ConveyorSchedule(AbstractSchedule):
             sorted_schedule = sorted(schedule, key=lambda x: x.start)
             new_schedule = []
             current_time = 0.0
-            for item in sorted_sch:
+            for item in sorted_schedule:
                 if item.start > current_time:
                     new_schedule.append(ScheduleItem(None, current_time, item.start - current_time))
                 new_schedule.append(item)
