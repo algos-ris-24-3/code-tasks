@@ -151,7 +151,48 @@ class ConveyorSchedule(AbstractSchedule):
                 raise ScheduleArgumentError(
                     ErrorTemplates.INVALID_STAGE_CNT.format(idx)
                 )
-
+                
+    def update_tasks(self):
+        """
+        Изменяет состав задач и перерасчитывает расписание
+        """
+        tasks = list(self._tasks)
+        
+        print('Введите новые значения времени для каждой задачи:')
+        
+        for i, task in enumerate(tasks, 1):
+            print(f"Задача: {task.name}, текущее время: [{task.stage_duration(0)}, {task.stage_duration(1)}]")
+        
+            while True:
+                try:
+                    input_str = input("Новое время для этапа 1: ").strip()
+                    new_first = float(input_str)
+                    if new_first < 0:
+                        print('Время не может быть отрицательным')
+                        continue
+                    break
+                except ValueError:
+                    print('Введите число')
+        
+            while True:
+                try:
+                    input_str = input("Новое время для этапа 2: ").strip()
+                    new_second = float(input_str)
+                    if new_second < 0:
+                        print("Время не может быть отрицательным")
+                        continue
+                    break
+                except ValueError:
+                    print("Введите число")
+        
+            tasks[i-1] = StagedTask(task.name, [new_first, new_second])
+            print(f"Задача '{task.name}' обновлена")
+        
+        print('Перерасчет расписания:')
+        
+        self._tasks = tuple(tasks)
+        self._executor_schedule = [[], []]
+        self.__fill_schedule(ConveyorSchedule.__sort_tasks(tasks))
 
 if __name__ == "__main__":
     print("Пример использования класса ConveyorSchedule")
@@ -177,3 +218,15 @@ if __name__ == "__main__":
         print(f"\nРасписание для исполнителя # {i + 1}:")
         for schedule_item in schedule.get_schedule_for_executor(i):
             print(schedule_item)
+
+    print("Хотите изменить состав задач?")
+    response = input("Введите 'да' для изменения или Enter для выхода: ").strip().lower()
+    
+    if response in ['да', 'Да']:
+        schedule.update_tasks()
+        
+        print(schedule)
+        for i in range(schedule.executor_count):
+            print(f"\nРасписание для исполнителя # {i + 1}:")
+            for schedule_item in schedule.get_schedule_for_executor(i):
+                print(schedule_item)
