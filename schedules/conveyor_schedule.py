@@ -43,11 +43,8 @@ class ConveyorSchedule(AbstractSchedule):
         """
         ConveyorSchedule.__validate_params(tasks)
         super().__init__(tasks, 2)
-        # Инициализируем _executor_schedule, если не сделано в super (для надежности)
         if not hasattr(self, '_executor_schedule'):
             self._executor_schedule = [[], []]
-        # Процедура заполняет пустую заготовку расписания для каждого
-        # исполнителя объектами ScheduleItem.
         self.__fill_schedule(ConveyorSchedule.__sort_tasks(tasks))
 
     @property
@@ -64,8 +61,8 @@ class ConveyorSchedule(AbstractSchedule):
         current_first_machine_time = 0
         current_second_machine_time = 0
 
-        schedule_0 = []  # Для первого исполнителя
-        schedule_1 = []  # Для второго исполнителя
+        schedule_0 = [] 
+        schedule_1 = []  
 
         for task in sorted_tasks:
             first_stage_time = task.stage_duration(0)
@@ -85,24 +82,22 @@ class ConveyorSchedule(AbstractSchedule):
             schedule_0.append(item_1)
             schedule_1.append(item_2)
 
-        # Общая продолжительность — конец второй машины
         total_duration = current_second_machine_time
 
-        # Функция для добавления простоев (None) в расписание
-        def add_idles(sch: list[ScheduleItem], total_dur: float) -> list[ScheduleItem]:
-            if not sch:
-                return [ScheduleItem(None, 0, total_dur)] if total_dur > 0 else []
-            sorted_sch = sorted(sch, key=lambda x: x.start)
-            new_sch = []
+        def add_idles(schedule: list[ScheduleItem], total_duration: float) -> list[ScheduleItem]:
+            if not schedule:
+                return [ScheduleItem(None, 0, total_duration)] if total_duration > 0 else []
+            sorted_sch = sorted(schedule, key=lambda x: x.start)
+            new_schedule = []
             current_time = 0.0
             for item in sorted_sch:
                 if item.start > current_time:
-                    new_sch.append(ScheduleItem(None, current_time, item.start - current_time))
-                new_sch.append(item)
+                    new_schedule.append(ScheduleItem(None, current_time, item.start - current_time))
+                new_schedule.append(item)
                 current_time = item.end
-            if total_dur > current_time:
-                new_sch.append(ScheduleItem(None, current_time, total_dur - current_time))
-            return new_sch
+            if total_duration > current_time:
+                new_schedule.append(ScheduleItem(None, current_time, total_duration - current_time))
+            return new_schedule
 
         self._executor_schedule[0] = add_idles(schedule_0, total_duration)
         self._executor_schedule[1] = add_idles(schedule_1, total_duration)
@@ -197,7 +192,6 @@ class ConveyorSchedule(AbstractSchedule):
 if __name__ == "__main__":
     print("Пример использования класса ConveyorSchedule")
 
-    # Инициализируем входные данные для составления расписания
     tasks = [
         StagedTask("a", [7, 2]),
         StagedTask("b", [3, 4]),
@@ -208,11 +202,8 @@ if __name__ == "__main__":
         StagedTask("g", [4, 5]),
     ]
 
-    # Инициализируем экземпляр класса Schedule
-    # при этом будет рассчитано расписание для каждого исполнителя
     schedule = ConveyorSchedule(tasks)
 
-    # Выведем в консоль полученное расписание
     print(schedule)
     for i in range(schedule.executor_count):
         print(f"\nРасписание для исполнителя # {i + 1}:")
