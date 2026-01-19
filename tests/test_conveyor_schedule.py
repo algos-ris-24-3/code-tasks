@@ -1,6 +1,7 @@
 import unittest
 
-
+from unittest.mock import patch
+from io import StringIO
 from schedules import ScheduleItem
 from schedules.abstract_schedule import AbstractSchedule
 from schedules.conveyor_schedule import ConveyorSchedule
@@ -261,6 +262,7 @@ class TestConveyorSchedule(unittest.TestCase):
         self.assertEqual(32, schedule.duration)
         self.assertEqual(stage1_schedule, schedule.get_schedule_for_executor(0))
         self.assertEqual(stage2_schedule, schedule.get_schedule_for_executor(1))
+        
     def setUp(self):
         self.tasks = [
             StagedTask("task1", [5.0, 3.0]),
