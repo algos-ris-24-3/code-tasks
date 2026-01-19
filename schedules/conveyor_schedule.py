@@ -98,6 +98,16 @@ class ConveyorSchedule(AbstractSchedule):
             time_first = end_first
             time_second = end_second
 
+        if time_second > time_first:
+            downtime_duration = time_second - time_first
+            self._executor_schedule[0].append(
+                ScheduleItem(
+                    task=None,
+                    start=time_first,
+                    duration=downtime_duration
+                )
+            )
+
     @staticmethod
     def __sort_tasks(tasks: list[StagedTask]) -> list[StagedTask]:
         """Возвращает отсортированный список задач для применения
