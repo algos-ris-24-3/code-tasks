@@ -51,18 +51,79 @@ class ConveyorSchedule(AbstractSchedule):
     @property
     def duration(self) -> float:
         """Возвращает общую продолжительность расписания."""
-        return self._executor_schedule[0][-1].end
+        if not self._executor_schedule[0]:
+            return 0.0
+        dur = self._executor_schedule[0][-1].end
+        return int(dur) if dur.is_integer() else dur
+
+    def add_task(self, task: StagedTask) -> None:
+        """Добавляет задачу и пересчитывает расписание."""
+        if not isinstance(task, StagedTask):
+            raise ScheduleArgumentError(ErrorMessages.TASKS_NOT_LIST)
+        if task.stage_count != 2:
+            raise ScheduleArgumentError(ErrorTemplates.INVALID_STAGE_CNT.format("new"))
+        self._tasks.append(task)
+        self.__recalculate_schedule()
+
+    def remove_task(self, task_name: str) -> None:
+        """Удаляет задачу по имени и пересчитывает расписание."""
+        for i, t in enumerate(self._tasks):
+            if t.name == task_name:
+                del self._tasks[i]
+                self.__recalculate_schedule()
+                return
+        raise ScheduleArgumentError(f"Task with name '{task_name}' not found.")
+    
+
+    def __recalculate_schedule(self) -> None:
+        """Полностью перестраивает расписание на основе текущих задач."""
+        self._executor_schedule = [[], []]
+        if self._tasks:
+            sorted_tasks = ConveyorSchedule.__sort_tasks(self._tasks)
+            self.__fill_schedule(sorted_tasks)
+
 
     def __fill_schedule(self, tasks: list[StagedTask]) -> None:
         """Процедура составляет расписание из элементов ScheduleItem для каждого
         исполнителя, согласно алгоритму Джонсона."""
-        pass
+        time1 = 0.0
+        time2 = 0.0
+        for task in tasks:
+            # Первый станок
+            duration_first = task.stage_duration(0)
+            self._executor_schedule[0].append(ScheduleItem(task, time1, duration_first))
+            time1 = time1 + duration_first
+
+            # Второй станок
+            start2 = max(time2, time1)
+            # Если есть простой на втором станке
+            if time2 < time1:
+                downtime_duration = time1 - time2
+                self._executor_schedule[1].append(ScheduleItem(None, time2, downtime_duration))
+            duration2 = task.stage_duration(1)
+            self._executor_schedule[1].append(ScheduleItem(task, start2, duration2))
+            time2 = start2 + duration2
+    
+        # Добавляем простой в конце для первого станка, если второй работает дольше
+        if time2 > time1:
+            downtime_duration = time2 - time1
+            self._executor_schedule[0].append(ScheduleItem(None, time1, downtime_duration))
 
     @staticmethod
     def __sort_tasks(tasks: list[StagedTask]) -> list[StagedTask]:
         """Возвращает отсортированный список задач для применения
         алгоритма Джонсона."""
-        pass
+        left = []
+        right = []
+        for task in tasks:
+            a, b = task.stage_duration(0), task.stage_duration(1)
+            if a < b:
+                left.append(task)
+            else:
+                right.append(task)
+        left.sort(key=lambda x: x.stage_duration(0))
+        right.sort(key=lambda x: x.stage_duration(1), reverse=True)
+        return left + right
 
     @staticmethod
     def __validate_params(tasks: list[StagedTask]) -> None:
