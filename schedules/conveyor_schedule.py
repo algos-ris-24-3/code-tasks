@@ -56,7 +56,32 @@ class ConveyorSchedule(AbstractSchedule):
     def __fill_schedule(self, tasks: list[StagedTask]) -> None:
         """Процедура составляет расписание из элементов ScheduleItem для каждого
         исполнителя, согласно алгоритму Джонсона."""
-        pass
+        
+        sorted_tasks = self.__sort_tasks(tasks)
+
+        current_first_machine_time = 0
+        current_second_machine_time = 0 
+
+        self.schedule.clear()
+
+        for task in sorted_tasks:
+            first_stage_time = task.stage_duration(0)
+            second_stage_time = task.stage_duration(1)
+
+            first_machine_start = current_first_machine_time
+            first_machine_end = first_machine_start + first_stage_time
+            current_first_machine_time = first_machine_end
+
+            second_machine_start = max(first_machine_end, current_second_machine_time)
+            second_machine_end = second_machine_start + second_stage_time
+            current_second_machine_time = second_machine_end
+
+            item_1 = ScheduleItem(task, first_machine_start, first_stage_time)
+            item_2 = ScheduleItem(task, second_machine_start, second_stage_time)
+        
+        
+            self.schedule.append(item_1)
+            self.schedule.append(item_2)
 
     @staticmethod
     def __sort_tasks(tasks: list[StagedTask]) -> list[StagedTask]:
