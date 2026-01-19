@@ -261,6 +261,41 @@ class TestConveyorSchedule(unittest.TestCase):
         self.assertEqual(32, schedule.duration)
         self.assertEqual(stage1_schedule, schedule.get_schedule_for_executor(0))
         self.assertEqual(stage2_schedule, schedule.get_schedule_for_executor(1))
+    def setUp(self):
+        self.tasks = [
+            StagedTask("task1", [5.0, 3.0]),
+            StagedTask("task2", [2.0, 4.0]),
+        ]
+        self.schedule = ConveyorSchedule(self.tasks)
+    
+    def test_basic_update(self):
+        """Базовый тест обновления времени"""
+        with patch('builtins.input', side_effect=['10', '20', '30', '40']):
+            self.schedule.update_tasks()
+        
+        updated = list(self.schedule._tasks)
+        self.assertEqual(updated[0].stage_duration(0), 10.0)
+        self.assertEqual(updated[1].stage_duration(1), 40.0)
+    
+    def test_error_handling(self):
+        """Тест обработки ошибок ввода"""
+        input_seq = ['abc', '5', '-1', '3', '2', '4']
+        with patch('builtins.input', side_effect=input_seq):
+            with patch('sys.stdout', new=StringIO()) as output:
+                self.schedule.update_tasks()
+                out = output.getvalue()
+                self.assertIn('Введите число', out)
+                self.assertIn('Время не может быть отрицательным', out)
+    
+    def test_schedule_recalculation(self):
+        """Тест пересчёта расписания после обновления"""
+        old_duration = self.schedule.duration
+        
+        with patch('builtins.input', side_effect=['1', '2', '3', '4']):
+            self.schedule.update_tasks()
+        
+        self.assertNotEqual(old_duration, self.schedule.duration)
+        self.assertGreater(self.schedule.duration, 0)
 
 
 if __name__ == "__main__":
