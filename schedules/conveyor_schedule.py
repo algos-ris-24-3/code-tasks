@@ -62,17 +62,23 @@ class ConveyorSchedule(AbstractSchedule):
             raise ScheduleArgumentError(ErrorMessages.TASKS_NOT_LIST)
         if task.stage_count != 2:
             raise ScheduleArgumentError(ErrorTemplates.INVALID_STAGE_CNT.format("new"))
+        
+        # Проверка на дубликат
+        for existing_task in self._tasks:
+            if existing_task.name == task.name:
+                raise ScheduleArgumentError(f"Задача с таким именем'{task.name}' уже есть.")
+        
         self._tasks.append(task)
         self.__recalculate_schedule()
 
     def remove_task(self, task_name: str) -> None:
         """Удаляет задачу по имени и пересчитывает расписание."""
-        for i, t in enumerate(self._tasks):
-            if t.name == task_name:
-                del self._tasks[i]
+        for index, task in enumerate(self._tasks):
+            if task.name == task_name:
+                del self._tasks[index]
                 self.__recalculate_schedule()
                 return
-        raise ScheduleArgumentError(f"Task with name '{task_name}' not found.")
+        raise ScheduleArgumentError(f"Задача с таким именем '{task_name}' не найдена.")
     
 
     def __recalculate_schedule(self) -> None:
@@ -89,14 +95,11 @@ class ConveyorSchedule(AbstractSchedule):
         time1 = 0.0
         time2 = 0.0
         for task in tasks:
-            # Первый станок
             duration_first = task.stage_duration(0)
             self._executor_schedule[0].append(ScheduleItem(task, time1, duration_first))
             time1 = time1 + duration_first
 
-            # Второй станок
             start2 = max(time2, time1)
-            # Если есть простой на втором станке
             if time2 < time1:
                 downtime_duration = time1 - time2
                 self._executor_schedule[1].append(ScheduleItem(None, time2, downtime_duration))
@@ -104,7 +107,6 @@ class ConveyorSchedule(AbstractSchedule):
             self._executor_schedule[1].append(ScheduleItem(task, start2, duration2))
             time2 = start2 + duration2
     
-        # Добавляем простой в конце для первого станка, если второй работает дольше
         if time2 > time1:
             downtime_duration = time2 - time1
             self._executor_schedule[0].append(ScheduleItem(None, time1, downtime_duration))
