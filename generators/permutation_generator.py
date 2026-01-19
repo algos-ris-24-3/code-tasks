@@ -2,21 +2,24 @@ from typing import Any
 
 
 def generate_permutations(items: list[Any]) -> list[list[Any]]:
-    """Генерирует все варианты перестановок элементов указанного множества
+    if not isinstance(items, list):
+        raise TypeError("Параметр items не является списком")
 
-    :param items: список элементов
-    :raise TypeError: если параметр items не является списком
-    :raise ValueError: если список элементов содержит дубликаты
-    :return: список перестановок, где каждая перестановка список элементов
-    множества
-    """
-    pass
+    if len(items) != len(set(items)):
+        raise ValueError("Список элементов содержит дубликаты")
 
+    if len(items) == 0:
+        return []
 
-def main():
-    items = [1, 2, 3]
-    print(generate_permutations(items))
+    if len(items) == 1:
+        return [items.copy()]
 
+    prev_perms = generate_permutations(items[:-1])
+    last_elem = items[-1]
+    result: list[list[Any]] = []
 
-if __name__ == "__main__":
-    main()
+    for perm in prev_perms:
+        for pos in range(len(perm) + 1):
+            result.append(perm[:pos] + [last_elem] + perm[pos:])
+
+    return result
