@@ -87,7 +87,7 @@ class ConveyorSchedule(AbstractSchedule):
         def add_idles(schedule: list[ScheduleItem], total_duration: float) -> list[ScheduleItem]:
             if not schedule:
                 return [ScheduleItem(None, 0, total_duration)] if total_duration > 0 else []
-            sorted_sch = sorted(schedule, key=lambda x: x.start)
+            sorted_schedule = sorted(schedule, key=lambda x: x.start)
             new_schedule = []
             current_time = 0.0
             for item in sorted_sch:
