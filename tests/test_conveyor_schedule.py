@@ -14,6 +14,45 @@ from schedules.staged_task import StagedTask
 
 
 class TestConveyorSchedule(unittest.TestCase):
+    def test_add_and_remove_task(self):
+        """Проверяет корректность добавления и удаления задач."""
+        # Начинаем с одной задачи
+        task_a = StagedTask("a", [2, 3])
+        schedule = ConveyorSchedule([task_a])
+        self.assertEqual(1, schedule.task_count)
+        self.assertEqual(5, schedule.duration)  # 2 + max(0,2) + 3 = 5
+
+        # Добавляем новую задачу
+        task_b = StagedTask("b", [1, 4])
+        schedule.add_task(task_b)
+        self.assertEqual(2, schedule.task_count)
+        self.assertIn("b", [t.name for t in schedule.tasks])
+
+        # Удаляем задачу
+        schedule.remove_task("a")
+        self.assertEqual(1, schedule.task_count)
+        self.assertNotIn("a", [t.name for t in schedule.tasks])
+        self.assertEqual(("b",), tuple(t.name for t in schedule.tasks))
+
+        # Проверяем, что расписание пересчитано корректно
+        # После удаления "a", остаётся только "b": [1,4] → длительность = 1 + 4 = 5
+        self.assertEqual(5, schedule.duration)
+
+        # Удаляем последнюю задачу
+        schedule.remove_task("b")
+        self.assertEqual(0, schedule.task_count)
+        self.assertEqual(0.0, schedule.duration)
+
+        # Попытка удалить несуществующую задачу
+        with self.assertRaises(ScheduleArgumentError):
+            schedule.remove_task("nonexistent")
+
+        # Добавляем задачу в пустое расписание
+        task_c = StagedTask("c", [3, 2])
+        schedule.add_task(task_c)
+        self.assertEqual(1, schedule.task_count)
+        self.assertEqual(5, schedule.duration)  # 3 + 2 = 5
+
     def test_class_inheritance(self):
         """Проверяет наследование от класса AbstractSchedule"""
         schedule = ConveyorSchedule([StagedTask("a", [1, 1])])
