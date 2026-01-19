@@ -69,6 +69,16 @@ class ConveyorSchedule(AbstractSchedule):
 
             start_second = max(end_first, time_second)
             end_second = start_second + duration_second
+
+            if start_second > time_second:
+                downtime_duration = start_second - time_second
+                self._executor_schedule[1].append(
+                    ScheduleItem(
+                        task=None,
+                        start=time_second,
+                        duration=downtime_duration
+                    )
+                )
             
             item_first = ScheduleItem(
                 task=task,
