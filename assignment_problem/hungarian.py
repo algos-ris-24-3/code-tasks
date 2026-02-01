@@ -4,23 +4,190 @@ from matching.bipartite_graph import BipartiteGraph
 from matching.bipartite_graph_matching import BipartiteGraphMatching
 
 
-def hungarian(matrix: list[list[int | float]]) -> BipartiteGraphMatching:
-    """
-    Реализация венгерского алгоритма для решения задачи о назначениях.
+EPS = 1e-10
+FLOAT_MAX = 1e100 
 
-    :param matrix: Квадратная матрица весов, где ``matrix[i][j]`` представляет вес назначения ``i -> j``.
-    :type matrix: list[list[int|float]]
-    :return: Матрица смежности, где ``True`` означает включение ребра в паросочетание.
-    :rtype: list[list[bool]]
-    """
+
+def hungarian(matrix: List[List[float]]) -> BipartiteGraphMatching:
+    """Основная функция венгерского алгоритма"""
     order = len(matrix)
     matching = BipartiteGraphMatching(order)
     reduced_matrix = get_reduced_matrix(matrix)
     bipartite_graph = _get_bipartite_graph_by_zeros(reduced_matrix)
-       
-    ...
-
+    
+    while not matching.is_perfect:
+        augmenting_path = _find_augmenting_path(bipartite_graph, matching)
+        
+        if augmenting_path:
+            _update_matching_with_augmenting_path(matching, augmenting_path)
+        else:
+            S, T = _get_sets_from_bfs(bipartite_graph, matching)
+            delta = _calculate_delta(reduced_matrix, S, T)
+            _update_reduced_matrix(reduced_matrix, S, T, delta)
+            bipartite_graph = _get_bipartite_graph_by_zeros(reduced_matrix)
+    
     return matching
+
+
+def _find_augmenting_path(
+    bipartite_graph: BipartiteGraph, 
+    matching: BipartiteGraphMatching
+) -> List[int]:
+    order = len(matching)
+    parent_row = {}
+    parent_col = {}
+    visited_row = [False] * order
+    visited_col = [False] * order
+    queue = deque()
+    
+    free_lefts = _get_free_left_vertices(matching)
+    for i in free_lefts:
+        visited_row[i] = True
+        queue.append(i)
+    
+    found = False
+    free_col = -1
+    
+    while queue and not found:
+        row = queue.popleft()
+        
+        for col in bipartite_graph.right_neighbors(row):
+            if not visited_col[col]:
+                visited_col[col] = True
+                parent_col[col] = row
+                
+                if matching.get_left_match(col) == -1:
+                    found = True
+                    free_col = col
+                    break
+                else:
+                    matched_row = matching.get_left_match(col)
+                    if not visited_row[matched_row]:
+                        visited_row[matched_row] = True
+                        parent_row[matched_row] = col
+                        queue.append(matched_row)
+    
+    if not found:
+        return []
+    
+    return _reconstruct_augmenting_path(free_col, parent_row, parent_col)
+
+
+def _get_free_left_vertices(matching: BipartiteGraphMatching) -> List[int]:
+    """Возвращает список свободных вершин слева"""
+    return [i for i in range(len(matching)) if matching.get_right_match(i) == -1]
+
+
+def _reconstruct_augmenting_path(
+    free_col: int, 
+    parent_row: dict, 
+    parent_col: dict
+) -> List[int]:
+    """Восстанавливает цепь по родительским ссылкам"""
+    path = []
+    current = free_col
+    
+    while current is not None:
+        path.append(current)
+        row = parent_col.get(current, None)
+        if row is None:
+            break
+        path.append(row)
+        current = parent_row.get(row, None)
+    
+    path.reverse()
+    return path
+
+
+def _update_matching_with_augmenting_path(
+    matching: BipartiteGraphMatching, 
+    augmenting_path: List[int]
+) -> None:
+    """Обновляет паросочетание с использованием чередующейся цепи"""
+
+    lefts = [augmenting_path[k] for k in range(0, len(augmenting_path), 2)]
+    for left in lefts:
+        if matching.is_left_covered(left):
+            right = matching.get_right_match(left)
+            matching.remove_edge(left, right)
+    
+
+    for k in range(0, len(augmenting_path) - 1, 2):
+        left = augmenting_path[k]
+        right = augmenting_path[k + 1]
+        matching.add_edge(left, right)
+
+
+def _get_sets_from_bfs(
+    bipartite_graph: BipartiteGraph, 
+    matching: BipartiteGraphMatching
+) -> tuple:
+
+    order = len(matching)
+    visited_row = [False] * order
+    visited_col = [False] * order
+    queue = deque()
+    
+    free_lefts = _get_free_left_vertices(matching)
+    for i in free_lefts:
+        visited_row[i] = True
+        queue.append(i)
+    
+    while queue:
+        row = queue.popleft()
+        
+        for col in bipartite_graph.right_neighbors(row):
+            if not visited_col[col]:
+                visited_col[col] = True
+                
+                matched_row = matching.get_left_match(col)
+                if matched_row != -1 and not visited_row[matched_row]:
+                    visited_row[matched_row] = True
+                    queue.append(matched_row)
+    
+    S = [i for i in range(order) if visited_row[i]]
+    T = [j for j in range(order) if visited_col[j]]
+    
+    return S, T
+
+
+def _calculate_delta(
+    reduced_matrix: List[List[float]], 
+    S: List[int], 
+    T: List[int]
+) -> float:
+    """Вычисляет минимальное значение для обновления матрицы"""
+    order = len(reduced_matrix)
+    delta = FLOAT_MAX
+    
+    T_set = set(T)  # Для быстрой проверки принадлежности
+    
+    for i in S:
+        for j in range(order):
+            if j not in T_set:
+                if reduced_matrix[i][j] < delta:
+                    delta = reduced_matrix[i][j]
+    
+    return delta
+
+
+def _update_reduced_matrix(
+    reduced_matrix: List[List[float]], 
+    S: List[int], 
+    T: List[int], 
+    delta: float
+) -> None:
+    """Обновляет редуцированную матрицу по алгоритму"""
+    order = len(reduced_matrix)
+    T_set = set(T)  
+    
+    for i in S:
+        for j in range(order):
+            reduced_matrix[i][j] -= delta
+    
+    for j in T:
+        for i in range(order):
+            reduced_matrix[i][j] += delta
 
 
 def _get_bipartite_graph_by_zeros(reduced_matrix: list[list[int | float]]) -> BipartiteGraph:
