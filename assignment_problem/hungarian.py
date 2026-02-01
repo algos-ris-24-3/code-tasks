@@ -1,8 +1,6 @@
 from collections import deque
-
 from matching.bipartite_graph import BipartiteGraph
 from matching.bipartite_graph_matching import BipartiteGraphMatching
-
 
 def hungarian(matrix: list[list[int | float]]) -> BipartiteGraphMatching:
     """
@@ -14,14 +12,118 @@ def hungarian(matrix: list[list[int | float]]) -> BipartiteGraphMatching:
     :rtype: list[list[bool]]
     """
     order = len(matrix)
-    matching = BipartiteGraphMatching(order)
+   
     reduced_matrix = get_reduced_matrix(matrix)
     bipartite_graph = _get_bipartite_graph_by_zeros(reduced_matrix)
-       
-    ...
+    
+    matching = BipartiteGraphMatching(order)
 
+    while not matching.is_perfect:
+        start_node = -1
+        for i in range(order):
+            if not matching.is_left_covered(i):
+                start_node = i
+                break
+        
+        if start_node == -1:
+            break
+
+        path_found, result = _find_chain(bipartite_graph, matching, start_node)
+
+        if path_found:
+            _apply_chain(matching, result)
+        else:
+            visited_left, visited_right = result
+            bipartite_graph = _update_matrix_and_graph(reduced_matrix, visited_left, visited_right)
+            
     return matching
 
+
+def _find_chain(graph: BipartiteGraph, matching: BipartiteGraphMatching, start_node: int):
+    """
+    Ищет увеличивающую цепь с использованием BFS (метод волны).
+    :return: (True, (end_right_node, parent_map)) если найден путь,
+             (False, (visited_left, visited_right)) если путь не найден.
+    """
+    queue = deque([start_node])
+    
+    parent_of_right = {} 
+    
+    visited_left = {start_node}
+    visited_right = set()
+    
+    while queue:
+        left_top = queue.popleft()
+        
+        neighbors = graph.right_neighbors(left_top)
+        for right_top in neighbors:
+            if right_top in visited_right:
+                continue
+            
+            visited_right.add(right_top)
+            parent_of_right[right_top] = left_top
+            
+            if not matching.is_right_covered(right_top):
+                return True, (right_top, parent_of_right)
+            
+            left_top_after_right = matching.get_left_match(right_top)
+            if left_top_after_right not in visited_left:
+                visited_left.add(left_top_after_right)
+                queue.append(left_top_after_right)
+    
+    return False, (visited_left, visited_right)
+
+
+def _apply_chain(matching: BipartiteGraphMatching, result: tuple):
+    """
+    Применяет увеличивающую цепь к текущему паросочетанию.
+    """
+    curr_r, parent_map = result
+    
+    while True:
+        curr_l = parent_map[curr_r]
+        
+        prev_match_r = -1
+        if matching.is_left_covered(curr_l):
+            prev_match_r = matching.get_right_match(curr_l)
+            matching.remove_edge(curr_l, prev_match_r)
+        
+        matching.add_edge(curr_l, curr_r)
+        
+        if prev_match_r == -1:
+            break
+            
+        curr_r = prev_match_r
+
+
+def _update_matrix_and_graph(reduced_matrix, visited_left, visited_right):
+    """
+    Выполняет диагональную редукцию и возвращает обновленный граф.
+    """
+    rows_count = len(reduced_matrix)
+    cols_count = len(reduced_matrix[0])
+    
+    min_elem = float('inf')
+    for row in visited_left:
+        for column in range(cols_count):
+            if column not in visited_right:
+                if reduced_matrix[row][column] < min_elem:
+                    min_elem = reduced_matrix[row][column]
+    
+    if min_elem == float('inf'):
+         raise ValueError("")
+
+    for row in range(rows_count):
+        if row in visited_left:
+            for column in range(cols_count):
+                reduced_matrix[row][column] -= min_elem
+    
+    for column in range(cols_count):
+        if column in visited_right:
+            for row in range(rows_count):
+                reduced_matrix[row][column] += min_elem
+
+    return _get_bipartite_graph_by_zeros(reduced_matrix)
 
 def _get_bipartite_graph_by_zeros(reduced_matrix: list[list[int | float]]) -> BipartiteGraph:
     adjacency_lists = {}
