@@ -22,10 +22,22 @@ def get_max_matching(bipartite_graph: BipartiteGraph) -> BipartiteGraphMatching:
     
     matching = BipartiteGraphMatching(bipartite_graph.order)
 
-    ...
+    while True:
+        chain = alternating_chain_search(bipartite_graph, matching, bipartite_graph.order)
+
+        if chain == None:
+            break
+
+        increase_matching(matching, chain)
     
     return matching
 
+def alternating_chain_search(graph, match, size):
+    pass
+
+def increase_matching(match, alternating_chain):
+    pass
+    
 
 if __name__ == "__main__":
     print("Исходный двудольный граф")
