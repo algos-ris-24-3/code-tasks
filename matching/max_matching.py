@@ -36,7 +36,17 @@ def alternating_chain_search(graph, match, size):
     pass
 
 def increase_matching(match, alternating_chain):
-    pass
+    for i in range(0, len(alternating_chain), 2):
+        left_vertex = alternating_chain[i][1]
+        right_vertex = alternating_chain[i+1][1]
+        if match.is_left_covered(left_vertex):
+            old_right = match.get_right_match(left_vertex)
+            match.remove_edge(left_vertex, old_right)
+
+        if match.is_right_covered(right_vertex):
+            old_left = match.get_left_match(right_vertex)
+            match.remove_edge(old_left, right_vertex)
+        match.add_edge(left_vertex, right_vertex)
     
 
 if __name__ == "__main__":
