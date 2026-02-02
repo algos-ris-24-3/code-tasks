@@ -3,9 +3,8 @@ from collections import deque
 from matching.bipartite_graph import BipartiteGraph
 from matching.bipartite_graph_matching import BipartiteGraphMatching
 
-
 EPS = 1e-10
-FLOAT_MAX = 1e100 
+FLOAT_MAX = 1e100
 
 
 def hungarian(matrix: list[list[int | float]]) -> BipartiteGraphMatching:
@@ -21,25 +20,42 @@ def hungarian(matrix: list[list[int | float]]) -> BipartiteGraphMatching:
     matching = BipartiteGraphMatching(order)
     reduced_matrix = get_reduced_matrix(matrix)
     bipartite_graph = _get_bipartite_graph_by_zeros(reduced_matrix)
-    
+
     while not matching.is_perfect:
-        augmenting_path = find_augmenting_path(bipartite_graph, matching)
-        
-        if augmenting_path:
-            update_matching_with_augmenting_path(matching, augmenting_path)
-        else:
-            S, T = get_sets_from_bfs(bipartite_graph, matching)
-            delta = calculate_min(reduced_matrix, S, T)
-            update_reduced_matrix(reduced_matrix, S, T, delta)
+        free_lefts = get_free_left_vertices(matching)
+        S = set()
+        T = set()
+        found = False
+        for root in free_lefts:
+            result = find_augmenting_path(bipartite_graph, matching, root)
+            if isinstance(result, list):
+                if result:
+                    update_matching_with_augmenting_path(matching, result)
+                    found = True
+                    break
+            else:
+                visited_row, visited_col = result
+                for i in range(order):
+                    if visited_row[i]:
+                        S.add(i)
+                for j in range(order):
+                    if visited_col[j]:
+                        T.add(j)
+        if not found:
+            S = list(S)
+            T = list(T)
+            min = calculate_min(reduced_matrix, S, T)
+            update_reduced_matrix(reduced_matrix, S, T, min)
             bipartite_graph = _get_bipartite_graph_by_zeros(reduced_matrix)
-    
+
     return matching
 
 
 def find_augmenting_path(
-    bipartite_graph: BipartiteGraph, 
-    matching: BipartiteGraphMatching
-) -> list[int]:
+        bipartite_graph: BipartiteGraph,
+        matching: BipartiteGraphMatching,
+        root: int
+) -> list[int] | tuple[list[bool], list[bool]]:
     """
     Находит цепь в двудольном графе на основе текущего паросочетания.
 
@@ -56,23 +72,21 @@ def find_augmenting_path(
     visited_row = [False] * order
     visited_col = [False] * order
     queue = deque()
-    
-    free_lefts = get_free_left_vertices(matching)
-    for i in free_lefts:
-        visited_row[i] = True
-        queue.append(i)
-    
+
+    visited_row[root] = True
+    queue.append(root)
+
     found = False
     free_col = -1
-    
+
     while queue and not found:
         row = queue.popleft()
-        
+
         for col in bipartite_graph.right_neighbors(row):
             if not visited_col[col]:
                 visited_col[col] = True
                 parent_col[col] = row
-                
+
                 if matching.get_left_match(col) == -1:
                     found = True
                     free_col = col
@@ -83,10 +97,10 @@ def find_augmenting_path(
                         visited_row[matched_row] = True
                         parent_row[matched_row] = col
                         queue.append(matched_row)
-    
+
     if not found:
-        return []
-    
+        return visited_row, visited_col
+
     return reconstruct_augmenting_path(free_col, parent_row, parent_col)
 
 
@@ -103,9 +117,9 @@ def get_free_left_vertices(matching: BipartiteGraphMatching) -> list[int]:
 
 
 def reconstruct_augmenting_path(
-    free_col: int, 
-    parent_row: dict, 
-    parent_col: dict
+        free_col: int,
+        parent_row: dict,
+        parent_col: dict
 ) -> list[int]:
     """
     Восстанавливает цепь по родительским ссылкам
@@ -121,7 +135,7 @@ def reconstruct_augmenting_path(
     """
     path = []
     current = free_col
-    
+
     while current is not None:
         path.append(current)
         row = parent_col.get(current, None)
@@ -129,14 +143,14 @@ def reconstruct_augmenting_path(
             break
         path.append(row)
         current = parent_row.get(row, None)
-    
+
     path.reverse()
     return path
 
 
 def update_matching_with_augmenting_path(
-    matching: BipartiteGraphMatching, 
-    augmenting_path: list[int]
+        matching: BipartiteGraphMatching,
+        augmenting_path: list[int]
 ) -> None:
     """
     Обновляет паросочетание с использованием найденной цепи
@@ -153,60 +167,16 @@ def update_matching_with_augmenting_path(
         if matching.is_left_covered(left):
             right = matching.get_right_match(left)
             matching.remove_edge(left, right)
-    
 
     for k in range(0, len(augmenting_path) - 1, 2):
         left = augmenting_path[k]
         right = augmenting_path[k + 1]
         matching.add_edge(left, right)
 
-
-def get_sets_from_bfs(
-    bipartite_graph: BipartiteGraph, 
-    matching: BipartiteGraphMatching
-) -> tuple:
-    """
-    Выполняет BFS для получения множеств вершины слева и вершины справа для обновления матрицы
-
-    :param bipartite_graph: Двудольный граф
-    :type bipartite_graph: BipartiteGraph
-    :param matching: Текущее паросочетание в графе
-    :type matching: BipartiteGraphMatching
-    :return: Кортеж из двух списков вершин слева и вершин справа
-    :rtype: tuple[list[int], list[int]]
-    """
-    order = matching.order
-    visited_row = [False] * order
-    visited_col = [False] * order
-    queue = deque()
-    
-    free_lefts = get_free_left_vertices(matching)
-    for i in free_lefts:
-        visited_row[i] = True
-        queue.append(i)
-    
-    while queue:
-        row = queue.popleft()
-        
-        for col in bipartite_graph.right_neighbors(row):
-            if not visited_col[col]:
-                visited_col[col] = True
-                
-                matched_row = matching.get_left_match(col)
-                if matched_row != -1 and not visited_row[matched_row]:
-                    visited_row[matched_row] = True
-                    queue.append(matched_row)
-    
-    S = [i for i in range(order) if visited_row[i]]
-    T = [j for j in range(order) if visited_col[j]]
-    
-    return S, T
-
-
 def calculate_min(
-    reduced_matrix: list[list[float]],
-    S: list[int],
-    T: list[int]
+        reduced_matrix: list[list[float]],
+        S: list[int],
+        T: list[int]
 ) -> float:
     """
     Вычисляет минимальное значение в редуцированной матрице
@@ -222,23 +192,23 @@ def calculate_min(
     """
     order = len(reduced_matrix)
     min = FLOAT_MAX
-    
-    T_set = set(T) 
-    
+
+    T_set = set(T)
+
     for i in S:
         for j in range(order):
             if j not in T_set:
                 if reduced_matrix[i][j] < min:
                     min = reduced_matrix[i][j]
-    
+
     return min
 
 
 def update_reduced_matrix(
-    reduced_matrix: list[list[float]],
-    S: list[int],
-    T: list[int],
-    min: float
+        reduced_matrix: list[list[float]],
+        S: list[int],
+        T: list[int],
+        min: float
 ) -> None:
     """
     Обновляет редуцированную матрицу по алгоритму
@@ -255,12 +225,12 @@ def update_reduced_matrix(
     :rtype: None
     """
     order = len(reduced_matrix)
-    T_set = set(T)  
-    
+    T_set = set(T)
+
     for i in S:
         for j in range(order):
             reduced_matrix[i][j] -= min
-    
+
     for j in T:
         for i in range(order):
             reduced_matrix[i][j] += min
@@ -301,6 +271,7 @@ def get_reduced_matrix(matrix: list[list[int | float]]) -> list[list[int | float
             reduced_matrix[row_idx][col_idx] -= min_col_value
 
     return reduced_matrix
+
 
 if __name__ == "__main__":
     matrix = [
