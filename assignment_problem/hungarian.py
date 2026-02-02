@@ -160,7 +160,7 @@ def _calculate_delta(
     order = len(reduced_matrix)
     delta = FLOAT_MAX
     
-    T_set = set(T)  # Для быстрой проверки принадлежности
+    T_set = set(T) 
     
     for i in S:
         for j in range(order):
