@@ -1,0 +1,57 @@
+import random
+
+
+def has_perfect_matching(matrix):
+    """Проверяет, существует ли совершенное паросочетание по нулевым ячейкам в матрице."""
+    order = len(matrix)
+    zero_map = [[c for c, val in enumerate(row) if val == 0] for row in matrix]
+
+    def can_match(row_idx, cols_in_use):
+        """Рекурсивная функция для поиска паросочетания"""
+        if row_idx == order:
+            return True
+
+        for col_idx in zero_map[row_idx]:
+            if col_idx not in cols_in_use:
+                cols_in_use.add(col_idx)
+                if can_match(row_idx + 1, cols_in_use):
+                    return True
+                cols_in_use.remove(col_idx)
+
+        return False
+
+    return can_match(0, set())
+
+
+def generate_special_matrix(order, min_val, max_val):
+    if min_val >= max_val:
+        raise ValueError("Нижняя граница должна быть меньше, чем верхняя")
+
+    while True:
+        original_matrix = [[random.randint(min_val, max_val) for _ in range(order)] for _ in range(order)]
+
+        reduced_matrix = [row[:] for row in original_matrix]
+
+        for i in range(order):
+            min_in_row = min(reduced_matrix[i])
+            if min_in_row > 0:
+                reduced_matrix[i] = [val - min_in_row for val in reduced_matrix[i]]
+
+        for j in range(order):
+            min_in_col = min(reduced_matrix[i][j] for i in range(order))
+            if min_in_col > 0:
+                for i in range(order):
+                    reduced_matrix[i][j] -= min_in_col
+
+        if not has_perfect_matching(reduced_matrix):
+            return original_matrix
+
+
+if __name__ == "__main__":
+    matrix_order = 5
+    min_value = 10
+    max_value = 100
+    special_matrix = generate_special_matrix(matrix_order, min_value, max_value)
+
+    for row in special_matrix:
+        print(row)
