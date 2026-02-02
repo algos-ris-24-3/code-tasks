@@ -221,24 +221,24 @@ def calculate_min(
     :rtype: float
     """
     order = len(reduced_matrix)
-    delta = FLOAT_MAX
+    min = FLOAT_MAX
     
     T_set = set(T) 
     
     for i in S:
         for j in range(order):
             if j not in T_set:
-                if reduced_matrix[i][j] < delta:
-                    delta = reduced_matrix[i][j]
+                if reduced_matrix[i][j] < min:
+                    min = reduced_matrix[i][j]
     
-    return delta
+    return min
 
 
 def update_reduced_matrix(
     reduced_matrix: list[list[float]],
     S: list[int],
     T: list[int],
-    delta: float
+    min: float
 ) -> None:
     """
     Обновляет редуцированную матрицу по алгоритму
@@ -249,8 +249,8 @@ def update_reduced_matrix(
     :type S: list[int]
     :param T: Множество вершин справа
     :type T: list[int]
-    :param delta: Значение для обновления матрицы
-    :type delta: float
+    :param min: Значение для обновления матрицы
+    :type min: float
     :return: None
     :rtype: None
     """
@@ -259,11 +259,11 @@ def update_reduced_matrix(
     
     for i in S:
         for j in range(order):
-            reduced_matrix[i][j] -= delta
+            reduced_matrix[i][j] -= min
     
     for j in T:
         for i in range(order):
-            reduced_matrix[i][j] += delta
+            reduced_matrix[i][j] += min
 
 
 def _get_bipartite_graph_by_zeros(reduced_matrix: list[list[int | float]]) -> BipartiteGraph:
