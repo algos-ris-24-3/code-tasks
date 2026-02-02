@@ -19,10 +19,10 @@ def hungarian(matrix: list[list[int | float]]) -> BipartiteGraphMatching:
        
     while not matching.is_perfect:
         bipartite_graph = _get_bipartite_graph_by_zeros(reduced_matrix)
-        matching_increased = _try_expand_matching(bipartite_graph, matching)
+        matching_increased, reachable_left, reachable_right = _try_expand_matching(bipartite_graph, matching)
         
         if not matching_increased:
-            reduced_matrix = _diagonal_reduction(reduced_matrix, bipartite_graph, matching)
+            reduced_matrix = _diagonal_reduction(reduced_matrix, reachable_left, reachable_right)
 
     return matching
 
@@ -33,48 +33,53 @@ def _get_bipartite_graph_by_zeros(reduced_matrix: list[list[int | float]]) -> Bi
         adjacency_lists[row_idx] = [col_idx for col_idx, value in enumerate(reduced_matrix[row_idx]) if value == 0]
     return BipartiteGraph(adjacency_lists)
 
-def _try_expand_matching(graph: BipartiteGraph, matching: BipartiteGraphMatching) -> bool:
+def _try_expand_matching(graph: BipartiteGraph, matching: BipartiteGraphMatching) ->tuple[bool, set[int], set[int]]:
     """
-    Пытается увеличить паросочетание методом волны (BFS с чередующимся деревом).
+    Пытается увеличить паросочетание методом волны.
 
     :param graph: двудольный граф, построенный по нулевым элементам редуцированной матрицы.
     :type graph: BipartiteGraph
     :param matching: текущее паросочетание.
     :type matching: BipartiteGraphMatching
-    :return: True, если паросочетание было увеличено, иначе False.
-    :rtype: bool
+    :return: кортеж (паросочетание увеличено?, покрытые деревом левые вершины, покрытые деревом правые вершины).
+    :rtype:  tuple[bool, set[int], set[int]]
     """
     for left_vertex in range(graph.order):
         if not matching.is_left_covered(left_vertex):
-            extension_path = _find_extension_path(graph, matching, left_vertex)
-            if extension_path:
-                _increase_along_path(matching, extension_path)
-                return True
-    return False
+            result = _find_extension_path(graph, matching, left_vertex)
+            if result['path'] is not None:
+                _increase_along_path(matching, result['path'])
+                return True, set(), set()
+            else:
+                return False, result['reachable_left'], result['reachable_right']
+    
+    return True, set(), set()
 
 def _find_extension_path(graph: BipartiteGraph, matching: BipartiteGraphMatching, start_vertex: int) -> list[int] | None:
     """
     Находит увеличивающий путь в графе методом волны.
     Строит чередующееся дерево от свободной левой вершины.
 
-    :param graph: Двудольный граф.
+    :param graph: двудольный граф.
     :type graph: BipartiteGraph
-    :param matching: Текущее паросочетание.
+    :param matching: текущее паросочетание.
     :type matching: BipartiteGraphMatching
-    :param start_vertex: Индекс свободной левой вершины (корень дерева).
+    :param start_vertex: индекс свободной левой вершины (корень дерева).
     :type start_vertex: int
-    :return: Список вершин увеличивающего пути или None, если путь не найден.
-    :rtype: list[int] | None
+    :return: словарь с ключами 'path' (список вершин или None),
+             'reachable_left' (множество покрытых деревом левых вершин),
+             'reachable_right' (множество покрытых деревом правых вершин).
+    :rtype: dict
     """
-    graph_size = graph.order
-    
-    parent = [-1] * (2 * graph_size)
-    visited_left = [False] * graph_size
-    visited_right = [False] * graph_size
-    
+    parent = [-1] * (2 * graph.order)
+    visited_left = [False] * graph.order
+    visited_right = [False] * graph.order
+    reachable_left = set()
+    reachable_right = set()
     queue = deque([start_vertex])
     visited_left[start_vertex] = True
-    
+    reachable_left.add(start_vertex)
+
     while queue:
         current_left = queue.popleft()
         for current_right in graph.right_neighbors(current_left):
@@ -82,17 +87,28 @@ def _find_extension_path(graph: BipartiteGraph, matching: BipartiteGraphMatching
                 continue
                 
             visited_right[current_right] = True
-            parent[graph_size + current_right] = current_left
+            reachable_right.add(current_right)
+            parent[graph.order + current_right] = current_left
             if not matching.is_right_covered(current_right):
-                return _restore_path(parent, graph_size, current_right)
+                path = _restore_path(parent, graph.order, current_right)
+                return {
+                    'path': path,
+                    'reachable_left': reachable_left,
+                    'reachable_right': reachable_right
+                }
             
             paired_left = matching.get_left_match(current_right)
             if not visited_left[paired_left]:
                 visited_left[paired_left] = True
-                parent[paired_left] = graph_size + current_right
+                reachable_left.add(paired_left)
+                parent[paired_left] = graph.order + current_right
                 queue.append(paired_left)
     
-    return None
+    return {
+        'path': None,
+        'reachable_left': reachable_left,
+        'reachable_right': reachable_right
+    }
 
 def _restore_path(parent: list[int], graph_size: int, end_right_vertex: int) -> list[int]:
     """
@@ -129,10 +145,9 @@ def _increase_along_path(matching: BipartiteGraphMatching, path: list[int]) -> N
     :param path: увеличивающий путь в виде чередующихся индексов (левая, правая, левая, ...).
     :type path: list[int]
     """
-    graph_size = matching.order
     edges_to_remove = []
     for position in range(1, len(path) - 1, 2):
-        right_index = path[position] - graph_size
+        right_index = path[position] - matching.order
         left_index = path[position + 1]
         if matching.is_left_covered(left_index):
             old_right = matching.get_right_match(left_index)
@@ -143,27 +158,25 @@ def _increase_along_path(matching: BipartiteGraphMatching, path: list[int]) -> N
     
     for position in range(0, len(path) - 1, 2):
         left_index = path[position]
-        right_index = path[position + 1] - graph_size
+        right_index = path[position + 1] - matching.order
         matching.add_edge(left_index, right_index)
 
-def _diagonal_reduction(matrix: list[list[int | float]], graph: BipartiteGraph, matching: BipartiteGraphMatching) -> list[list[int | float]]:
+def _diagonal_reduction(matrix: list[list[int | float]], reachable_left: set[int], reachable_right: set[int]) -> list[list[int | float]]:
     """
     Выполняет диагональную редукцию матрицы для создания дополнительных нулей. 
-    Находит минимальный элемент среди непокрытых вершин и вычитает его 
-    из строк с непокрытыми левыми вершинами, добавляет к столбцам с покрытыми 
-    правыми вершинами.
+    Использует информацию о покрытых деревом вершинах, полученную при построении 
+    чередующегося дерева методом волны.
 
     :param matrix: редуцированная матрица.
     :type matrix: list[list[int|float]]
-    :param graph: двудольный граф.
-    :type graph: BipartiteGraph
-    :param matching: текущее паросочетание.
-    :type matching: BipartiteGraphMatching
+    :param reachable_left: множество покрытых деревом левых вершин (множество X).
+    :type reachable_left: set[int]
+    :param reachable_right: множество покрытых деревом правых вершин (множество Y).
+    :type reachable_right: set[int]
     :return: новая редуцированная матрица с дополнительными нулями.
     :rtype: list[list[int|float]]
     """
     matrix_size = len(matrix)
-    reachable_left, reachable_right = _find_reachable_vertices(graph, matching)
     
     min_value = float('inf')
     for row in range(matrix_size):
@@ -184,47 +197,6 @@ def _diagonal_reduction(matrix: list[list[int | float]], graph: BipartiteGraph, 
                 new_matrix[row][col] += min_value
     
     return new_matrix
-
-def _find_reachable_vertices(graph: BipartiteGraph, matching: BipartiteGraphMatching) -> tuple[set[int], set[int]]:
-    """
-    Находит все вершины, достижимые из свободных левых вершин по чередующимся путям.
-
-    :param graph: двудольный граф.
-    :type graph: BipartiteGraph
-    :param matching: текущее паросочетание.
-    :type matching: BipartiteGraphMatching
-    :return: кортеж из двух множеств (достижимые левые вершины, достижимые правые вершины).
-    :rtype: tuple[set[int], set[int]]
-    """
-    graph_size = graph.order
-    reachable_left = set()
-    reachable_right = set()
-    visited_left = [False] * graph_size
-    visited_right = [False] * graph_size
-    queue = deque()
-
-    for left_vertex in range(graph_size):
-        if not matching.is_left_covered(left_vertex):
-            queue.append(left_vertex)
-            visited_left[left_vertex] = True
-            reachable_left.add(left_vertex)
-    
-    while queue:
-        current_left = queue.popleft()
-        
-        for right_vertex in graph.right_neighbors(current_left):
-            if not visited_right[right_vertex]:
-                visited_right[right_vertex] = True
-                reachable_right.add(right_vertex)
-                
-                if matching.is_right_covered(right_vertex):
-                    paired_left = matching.get_left_match(right_vertex)
-                    if not visited_left[paired_left]:
-                        visited_left[paired_left] = True
-                        reachable_left.add(paired_left)
-                        queue.append(paired_left)
-    
-    return reachable_left, reachable_right
 
 def get_reduced_matrix(matrix: list[list[int | float]]) -> list[list[int | float]]:
     """
