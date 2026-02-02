@@ -8,39 +8,56 @@ EPS = 1e-10
 FLOAT_MAX = 1e100 
 
 
-def hungarian(matrix: List[List[float]]) -> BipartiteGraphMatching:
-    """Основная функция венгерского алгоритма"""
+def hungarian(matrix: list[list[int | float]]) -> BipartiteGraphMatching:
+    """
+    Реализация венгерского алгоритма для решения задачи о назначениях.
+
+    :param matrix: Квадратная матрица весов, где ``matrix[i][j]`` представляет вес назначения ``i -> j``.
+    :type matrix: list[list[int|float]]
+    :return: Матрица смежности, где ``True`` означает включение ребра в паросочетание.
+    :rtype: list[list[bool]]
+    """
     order = len(matrix)
     matching = BipartiteGraphMatching(order)
     reduced_matrix = get_reduced_matrix(matrix)
     bipartite_graph = _get_bipartite_graph_by_zeros(reduced_matrix)
     
     while not matching.is_perfect:
-        augmenting_path = _find_augmenting_path(bipartite_graph, matching)
+        augmenting_path = find_augmenting_path(bipartite_graph, matching)
         
         if augmenting_path:
-            _update_matching_with_augmenting_path(matching, augmenting_path)
+            update_matching_with_augmenting_path(matching, augmenting_path)
         else:
-            S, T = _get_sets_from_bfs(bipartite_graph, matching)
-            delta = _calculate_delta(reduced_matrix, S, T)
-            _update_reduced_matrix(reduced_matrix, S, T, delta)
+            S, T = get_sets_from_bfs(bipartite_graph, matching)
+            delta = calculate_min(reduced_matrix, S, T)
+            update_reduced_matrix(reduced_matrix, S, T, delta)
             bipartite_graph = _get_bipartite_graph_by_zeros(reduced_matrix)
     
     return matching
 
 
-def _find_augmenting_path(
+def find_augmenting_path(
     bipartite_graph: BipartiteGraph, 
     matching: BipartiteGraphMatching
-) -> List[int]:
-    order = len(matching)
+) -> list[int]:
+    """
+    Находит цепь в двудольном графе на основе текущего паросочетания.
+
+    :param bipartite_graph: Двудольный граф
+    :type bipartite_graph: BipartiteGraph
+    :param matching: Текущее паросочетание в графе
+    :type matching: BipartiteGraphMatching
+    :return: Список вершин, образующих цепь, или пустой список, если цепь не найдена
+    :rtype: list[int]
+    """
+    order = matching.order
     parent_row = {}
     parent_col = {}
     visited_row = [False] * order
     visited_col = [False] * order
     queue = deque()
     
-    free_lefts = _get_free_left_vertices(matching)
+    free_lefts = get_free_left_vertices(matching)
     for i in free_lefts:
         visited_row[i] = True
         queue.append(i)
@@ -70,20 +87,38 @@ def _find_augmenting_path(
     if not found:
         return []
     
-    return _reconstruct_augmenting_path(free_col, parent_row, parent_col)
+    return reconstruct_augmenting_path(free_col, parent_row, parent_col)
 
 
-def _get_free_left_vertices(matching: BipartiteGraphMatching) -> List[int]:
-    """Возвращает список свободных вершин слева"""
-    return [i for i in range(len(matching)) if matching.get_right_match(i) == -1]
+def get_free_left_vertices(matching: BipartiteGraphMatching) -> list[int]:
+    """
+    Возвращает список свободных вершин слева
+
+    :param matching: Текущее паросочетание в графе
+    :type matching: BipartiteGraphMatching
+    :return: Список индексов свободных вершин слева
+    :rtype: list[int]
+    """
+    return [i for i in range(matching.order) if matching.get_right_match(i) == -1]
 
 
-def _reconstruct_augmenting_path(
+def reconstruct_augmenting_path(
     free_col: int, 
     parent_row: dict, 
     parent_col: dict
-) -> List[int]:
-    """Восстанавливает цепь по родительским ссылкам"""
+) -> list[int]:
+    """
+    Восстанавливает цепь по родительским ссылкам
+
+    :param free_col: Индекс свободной вершины справа, с которой начинается цепь
+    :type free_col: int
+    :param parent_row: Словарь родительских ссылок для вершин слева
+    :type parent_row: dict
+    :param parent_col: Словарь родительских ссылок для вершин справа
+    :type parent_col: dict
+    :return: Список вершин, образующих цепь
+    :rtype: list[int]
+    """
     path = []
     current = free_col
     
@@ -99,12 +134,20 @@ def _reconstruct_augmenting_path(
     return path
 
 
-def _update_matching_with_augmenting_path(
+def update_matching_with_augmenting_path(
     matching: BipartiteGraphMatching, 
-    augmenting_path: List[int]
+    augmenting_path: list[int]
 ) -> None:
-    """Обновляет паросочетание с использованием чередующейся цепи"""
+    """
+    Обновляет паросочетание с использованием найденной цепи
 
+    :param matching: Текущее паросочетание
+    :type matching: BipartiteGraphMatching
+    :param augmenting_path: Список вершин, образующих цепь
+    :type augmenting_path: list[int]
+    :return: None
+    :rtype: None
+    """
     lefts = [augmenting_path[k] for k in range(0, len(augmenting_path), 2)]
     for left in lefts:
         if matching.is_left_covered(left):
@@ -118,17 +161,26 @@ def _update_matching_with_augmenting_path(
         matching.add_edge(left, right)
 
 
-def _get_sets_from_bfs(
+def get_sets_from_bfs(
     bipartite_graph: BipartiteGraph, 
     matching: BipartiteGraphMatching
 ) -> tuple:
+    """
+    Выполняет BFS для получения множеств вершины слева и вершины справа для обновления матрицы
 
-    order = len(matching)
+    :param bipartite_graph: Двудольный граф
+    :type bipartite_graph: BipartiteGraph
+    :param matching: Текущее паросочетание в графе
+    :type matching: BipartiteGraphMatching
+    :return: Кортеж из двух списков вершин слева и вершин справа
+    :rtype: tuple[list[int], list[int]]
+    """
+    order = matching.order
     visited_row = [False] * order
     visited_col = [False] * order
     queue = deque()
     
-    free_lefts = _get_free_left_vertices(matching)
+    free_lefts = get_free_left_vertices(matching)
     for i in free_lefts:
         visited_row[i] = True
         queue.append(i)
@@ -151,12 +203,23 @@ def _get_sets_from_bfs(
     return S, T
 
 
-def _calculate_delta(
-    reduced_matrix: List[List[float]], 
-    S: List[int], 
-    T: List[int]
+def calculate_min(
+    reduced_matrix: list[list[float]],
+    S: list[int],
+    T: list[int]
 ) -> float:
-    """Вычисляет минимальное значение для обновления матрицы"""
+    """
+    Вычисляет минимальное значение в редуцированной матрице
+
+    :param reduced_matrix: Редуцированная матрица
+    :type reduced_matrix: list[list[float]]
+    :param S: Множество вершин слева
+    :type S: list[int]
+    :param T: Множество вершин справа
+    :type T: list[int]
+    :return: Минимальное значение для обновления матрицы
+    :rtype: float
+    """
     order = len(reduced_matrix)
     delta = FLOAT_MAX
     
@@ -171,13 +234,26 @@ def _calculate_delta(
     return delta
 
 
-def _update_reduced_matrix(
-    reduced_matrix: List[List[float]], 
-    S: List[int], 
-    T: List[int], 
+def update_reduced_matrix(
+    reduced_matrix: list[list[float]],
+    S: list[int],
+    T: list[int],
     delta: float
 ) -> None:
-    """Обновляет редуцированную матрицу по алгоритму"""
+    """
+    Обновляет редуцированную матрицу по алгоритму
+
+    :param reduced_matrix: Редуцированная матрица
+    :type reduced_matrix: list[list[float]]
+    :param S: Множество вершин слева
+    :type S: list[int]
+    :param T: Множество вершин справа
+    :type T: list[int]
+    :param delta: Значение для обновления матрицы
+    :type delta: float
+    :return: None
+    :rtype: None
+    """
     order = len(reduced_matrix)
     T_set = set(T)  
     
@@ -191,6 +267,14 @@ def _update_reduced_matrix(
 
 
 def _get_bipartite_graph_by_zeros(reduced_matrix: list[list[int | float]]) -> BipartiteGraph:
+    """
+    Строит двудольный граф на основе нулевых элементов в редуцированной матрице
+
+    :param reduced_matrix: Редуцированная матрица
+    :type reduced_matrix: list[list[int|float]]
+    :return: Двудольный граф, где ребра соответствуют нулевым элементам.
+    :rtype: BipartiteGraph
+    """
     adjacency_lists = {}
     for row_idx in range(len(reduced_matrix)):
         adjacency_lists[row_idx] = [col_idx for col_idx, value in enumerate(reduced_matrix[row_idx]) if value == 0]
