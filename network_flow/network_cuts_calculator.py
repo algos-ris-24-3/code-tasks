@@ -97,12 +97,26 @@ class NetworkCutsCalculator:
         :return: Данные о вершинах сети, содержащие источники, стоки и транзиты.
         :rtype: NetworkVerticesData
         """
+        vertices_count = len(matrix)
         sources = []
-        ...
         sinks = []
-        ...
         transits = []
-        ...
+
+        for vertex_index in range(vertices_count):
+            isIncoming = False
+            isOutgoing = False
+            for neighbor_index in range(vertices_count):
+                if matrix[vertex_index][neighbor_index] > 0:
+                    isOutgoing = True
+                if matrix[neighbor_index][vertex_index] > 0:
+                    isIncoming = True
+            
+            if isOutgoing and not isIncoming:
+                sources.append(vertex_index)
+            elif isIncoming and not isOutgoing:
+                sinks.append(vertex_index)
+            elif isIncoming and isOutgoing:
+                transits.append(vertex_index)
 
         return NetworkVerticesData(sources, sinks, transits)
 
