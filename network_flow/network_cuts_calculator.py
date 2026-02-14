@@ -79,7 +79,13 @@ class NetworkCutsCalculator:
 
     @staticmethod
     def _get_cut_capacity(source_vertices, sink_vertices, matrix):
-        ...
+        capacity = 0
+
+        for vertex_of_s in source_vertices:
+            for vertex_of_t in sink_vertices:
+                capacity += matrix[vertex_of_s][vertex_of_t]
+
+        return capacity
     
     @staticmethod
     def split_vertices_by_types(matrix) -> NetworkVerticesData:
