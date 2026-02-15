@@ -27,21 +27,22 @@ class NetworkCutsCalculator:
 
         cuts = []
         
-        # Перебираем все варианты распределения транзитных вершин
         for mask_value in range(2 ** transit_cnt):
-            mask_bits = format_mask.format(mask_value)
+            if transit_cnt == 0:
+                mask_bits = ""
+            else:
+                mask_bits = format_mask.format(mask_value)
 
-            source_vertices = [source_idx]
-            sink_vertices = [sink_idx]
+            source_vertices = {source_idx}
+            sink_vertices = {sink_idx}
 
-            # Распределяем вершины по разрезу
             for bit_index, bit_value in enumerate(mask_bits):
                 vertex_idx = transit_idxs[bit_index]
 
                 if bit_value == "1":
-                    source_vertices.append(vertex_idx)
+                    source_vertices.add(vertex_idx)
                 else:
-                    sink_vertices.append(vertex_idx)
+                    sink_vertices.add(vertex_idx)
 
             cut_capacity = NetworkCutsCalculator._get_cut_capacity(
                 source_vertices,
@@ -111,9 +112,9 @@ class NetworkCutsCalculator:
                 if matrix[neighbor_index][vertex_index] > 0:
                     isIncoming = True
             
-            if isOutgoing and not isIncoming:
+            if not isIncoming:
                 sources.append(vertex_index)
-            elif isIncoming and not isOutgoing:
+            elif not isOutgoing:
                 sinks.append(vertex_index)
             elif isIncoming and isOutgoing:
                 transits.append(vertex_index)
