@@ -47,7 +47,21 @@ def __floyd_warshall(dist_matrix: list[list[int]]) -> tuple[list[int], list[int]
     :rtype: list[list[int]]
     :raises RuntimeError: Если в графе обнаружен цикл отрицательной стоимости.
     """
-    pass
+    dist = [row[:] for row in dist_matrix]
+    
+    for k in range(len(dist)):
+        for i in range(len(dist)):
+            for j in range(len(dist)):
+                if dist[i][k] is not None and dist[k][j] is not None:
+                    new_distance = dist[i][k] + dist[k][j]
+                    if dist[i][j] is None or dist[i][j] > new_distance:
+                        dist[i][j] = new_distance
+    
+    for i in range(len(dist)):
+        if dist[i][i] < 0:
+            raise RuntimeError("В графе обнаружен цикл отрицательной стоимости.")
+    
+    return dist
 
 
 def __restore_path(
@@ -71,7 +85,27 @@ def __restore_path(
              Если путь отсутствует, возвращается пустой список.
     :rtype: list[int]
     """
-    pass
+    path = []
+
+    if dist[source_idx][target_idx] is None:
+        return path
+
+
+    current = source_idx
+    while current != target_idx:
+        path.append(current)
+   
+        found_next = False
+        for k in range(len(dist)):
+            if dist[current][target_idx] == dist[current][k] + dist[k][target_idx]:
+                current = k
+                found_next = True
+                break
+        if not found_next:  
+            return []
+    
+    path.append(target_idx) 
+    return path
 
 
 def __validate_params(dist_matrix: list[list[int]], source_idx: int, target_idx: int):
