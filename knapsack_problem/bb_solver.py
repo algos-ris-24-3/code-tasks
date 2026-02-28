@@ -27,12 +27,16 @@ class BranchAndBoundSolver(KnapsackAbstractSolver):
 
         first_bound = self._get_bound(-1, [], items)
 
-        heap = [(-first_bound, -1, 0, 0, [])]
+        root = BranchNode(-1, [], first_bound)
+
+        heap = [(-first_bound, root, 0, 0)]
         
         while len(heap) > 0:
-            minus_bound, level, weight, value, path = heapq.heappop(heap)
+            minus_bound, node, weight, value = heapq.heappop(heap)
 
             bound = -minus_bound
+            level = node.level
+            path = node.taken
 
             if bound <= best_option:
                 continue
@@ -65,16 +69,20 @@ class BranchAndBoundSolver(KnapsackAbstractSolver):
                 new_bound = self._get_bound(next_level, new_path, items)
 
                 if new_bound > best_option:
-                    heapq.heappush(heap, (-new_bound, next_level, new_weight, new_value, new_path))
+                    new_node = BranchNode(next_level, new_path, new_bound)
+
+                    heapq.heappush(heap, (-new_bound, new_node, new_weight, new_value))
 
             not_taken_bound = self._get_bound(next_level, path, items)
 
             if not_taken_bound > best_option:
-                heapq.heappush(heap, (-not_taken_bound, next_level, weight, value, path))
+                not_taken_node = BranchNode(next_level, path, not_taken_bound)
+
+                heapq.heappush(heap, (-not_taken_bound, not_taken_node, weight, value))
 
         best_items.sort()
 
-        return KnapsackSolution(cost = best_option, items = best_items)
+        return KnapsackSolution(best_option, best_items)
 
     def _get_bound(self, level, taken, items):
         weight = 0
