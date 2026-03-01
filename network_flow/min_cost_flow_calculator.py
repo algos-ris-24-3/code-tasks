@@ -43,20 +43,71 @@ class MinCostFlowCalculator(MaxFlowCalculator):
 
     def _minimize_cost(self) -> None:
         """Осуществляет минимизацию стоимости максимального потока
-        посредством поиска и удаления отрицательных циклов в остаточной сети.
-        После удаления всех циклов обновляет матрицу локальных потоков
-        на основе остаточной сети."""
-        pass
+        посредством поиска и удаления отрицательных циклов в остаточной сети."""
+        while True:
+            loop = self._find_negative_loop(0)
+            
+            if not loop:
+                break
+                
+            self._remove_negative_loop(loop)
 
-    def _find_negative_loop(self, start_vertex_idx) -> list[int]:
-        """Возвращает найденный цикл отрицательной стоимости в остаточной сети
-        стоимости транспортировки"""
-        pass
+    def _find_negative_loop(self, start_vertex_idx: int) -> list[int]:
+        """Возвращает найденный цикл отрицательной стоимости в остаточной сети."""
+        n = self._order
+        dist = [0] * n
+        parent = [-1] * n
+        last_v = -1
 
-    def _remove_negative_loop(self, loop) -> None:
-        """Удаляет цикл отрицательной стоимости в остаточных сетях потоков и стоимостей."""
+        for i in range(n):
+            last_v = -1
+            for u in range(n):
+                for v in range(n):
+                    if self._residual_matrix[u][v] > 0:
+                        weight = self._cost_residual_matrix[u][v]
+                        if dist[v] > dist[u] + weight:
+                            dist[v] = dist[u] + weight
+                            parent[v] = u
+                            last_v = v
+            if last_v == -1:
+                return []
         
-        pass
+        curr = last_v
+        for _ in range(n):
+            curr = parent[curr]
+
+        loop = []
+        node = curr
+        while True:
+            loop.append(node)
+            if node == curr and len(loop) > 1:
+                break
+            node = parent[node]
+        
+        return loop[::-1]
+
+    def _remove_negative_loop(self, loop: list[int]) -> None:
+        """Удаляет отрицательный цикл, корректно обновляя поток и остаточные матрицы."""
+        if not loop:
+            return
+
+        bottleneck = inf
+        for i in range(len(loop) - 1):
+            u, v = loop[i], loop[i+1]
+            bottleneck = min(bottleneck, self._residual_matrix[u][v])
+
+        for i in range(len(loop) - 1):
+            u, v = loop[i], loop[i+1]
+            if self._cost_residual_matrix[u][v] < 0:
+                self._flow_matrix[u][v] -= bottleneck
+            elif self._cost_residual_matrix[u][v] > 0:
+                self._flow_matrix[v][u] += bottleneck
+            else:
+                if self._capacity_matrix[v][u] > 0:
+                    self._flow_matrix[v][u] += bottleneck
+                else:
+                    self._flow_matrix[u][v] -= bottleneck
+        self._residual_matrix, self._cost_residual_matrix = self._get_residual_matrices()
 
     def _get_residual_matrices(self):
         """Возвращает остаточные сети, созданные на основе матриц
@@ -84,9 +135,13 @@ class MinCostFlowCalculator(MaxFlowCalculator):
         return residual_matrix, cost_residual_matrix
 
     def _get_cost_by_flow(self) -> int:
-        """Возвращает суммарную стоимость транспортировки на основе матрицы локальных потоков
-        и матрицы стоимостей"""
-        pass
+        """Возвращает суммарную стоимость транспортировки."""
+        total_cost = 0
+        for i in range(self._order):
+            for j in range(self._order):
+                if self._flow_matrix[i][j] > 0:
+                    total_cost += self._flow_matrix[i][j] * self._cost_matrix[i][j]
+        return total_cost
 
 
 if __name__ == "__main__":
