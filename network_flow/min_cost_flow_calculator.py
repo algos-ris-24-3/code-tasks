@@ -43,7 +43,9 @@ class MinCostFlowCalculator(MaxFlowCalculator):
 
     def _minimize_cost(self) -> None:
         """Осуществляет минимизацию стоимости максимального потока
-        посредством поиска и удаления отрицательных циклов в остаточной сети."""
+        посредством поиска и удаления отрицательных циклов в остаточной сети.
+        После удаления всех циклов обновляет матрицу локальных потоков
+        на основе остаточной сети."""
         while True:
             loop = self._find_negative_loop(0)
             
@@ -135,7 +137,8 @@ class MinCostFlowCalculator(MaxFlowCalculator):
         return residual_matrix, cost_residual_matrix
 
     def _get_cost_by_flow(self) -> int:
-        """Возвращает суммарную стоимость транспортировки."""
+        """Возвращает суммарную стоимость транспортировки на основе матрицы локальных потоков
+        и матрицы стоимостей"""
         total_cost = 0
         for i in range(self._order):
             for j in range(self._order):
