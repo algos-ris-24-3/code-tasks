@@ -1,6 +1,6 @@
 
 from network_flow.min_cost_flow_calculator import MinCostFlowCalculator
-
+from transportation_problem.transportation_solver import TransportationProblemSolver
 
 if __name__ == "__main__":
     capacity_matrix = [
@@ -32,3 +32,28 @@ if __name__ == "__main__":
     print("Матрица локальных потоков")
     for row in calculator._flow_matrix:
         print(row)
+        
+    print("Пример решения транспортной задачи:")
+    print("="*50)
+
+    supply = [5, 4, 3] 
+    demand = [7, 5] 
+    cost_matrix = [
+        [30, 20],  
+        [25, 15],  
+        [40, 50],  
+    ]
+
+    print("Мощности заводов:", supply)
+    print("Ёмкости складов:", demand)
+    print("Матрица стоимостей:")
+    for row in cost_matrix:
+        print(" ", row)
+
+    solver = TransportationProblemSolver(supply, demand, cost_matrix)
+    result = solver.result
+
+    print("\nМатрица перевозок:")
+    for i, row in enumerate(result.transport_matrix):
+        print(f"  Завод {i+1}: {row}")
+    print("Минимальная стоимость:", result.min_cost)
