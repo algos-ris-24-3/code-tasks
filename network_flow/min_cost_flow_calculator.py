@@ -46,17 +46,109 @@ class MinCostFlowCalculator(MaxFlowCalculator):
         посредством поиска и удаления отрицательных циклов в остаточной сети.
         После удаления всех циклов обновляет матрицу локальных потоков
         на основе остаточной сети."""
-        pass
+        while True:
+            negative_loop = []
+            for start in range(self._order):
+                negative_loop = self._find_negative_loop(start)
+                if negative_loop:
+                    break
+
+            if not negative_loop:
+                break
+
+            self._remove_negative_loop(negative_loop)
+
+        self._set_flow_matrix_by_residual_matrix()
 
     def _find_negative_loop(self, start_vertex_idx) -> list[int]:
         """Возвращает найденный цикл отрицательной стоимости в остаточной сети
-        стоимости транспортировки"""
-        pass
+        стоимости транспортировки.
+        """
+
+        dist = [inf] * self._order
+        parent = [-1] * self._order
+        dist[start_vertex_idx] = 0
+
+        for _ in range(self._order - 1):
+            updated = False
+            for u in range(self._order):
+                if dist[u] == inf:
+                    continue
+                for v in range(self._order):
+                    if self._residual_matrix[u][v] <= 0:
+                        continue
+                    w = self._cost_residual_matrix[u][v]
+                    if dist[u] + w < dist[v]:
+                        dist[v] = dist[u] + w
+                        parent[v] = u
+                        updated = True
+            if not updated:
+                break
+
+        cycle_vertex = -1
+        for u in range(self._order):
+            if dist[u] == inf:
+                continue
+            for v in range(self._order):
+                if self._residual_matrix[u][v] <= 0:
+                    continue
+                w = self._cost_residual_matrix[u][v]
+                if dist[u] + w < dist[v]:
+                    parent[v] = u
+                    cycle_vertex = v
+                    break
+            if cycle_vertex != -1:
+                break
+
+        if cycle_vertex == -1:
+            return []
+
+        x = cycle_vertex
+        for _ in range(self._order):
+            x = parent[x]
+            if x == -1:
+                return []
+
+        loop = [x]
+        cur = parent[x]
+        while cur != -1 and cur != x:
+            loop.append(cur)
+            cur = parent[cur]
+
+        if cur == -1:
+            return []
+
+        loop.append(x)
+        loop.reverse()
+        return loop
 
     def _remove_negative_loop(self, loop) -> None:
         """Удаляет цикл отрицательной стоимости в остаточных сетях потоков и стоимостей."""
-        
-        pass
+        if not loop or len(loop) < 2:
+            return
+
+        delta = inf
+        for i in range(len(loop) - 1):
+            u = loop[i]
+            v = loop[i + 1]
+            delta = min(delta, self._residual_matrix[u][v])
+
+        if delta == inf or delta <= 0:
+            return
+
+        for i in range(len(loop) - 1):
+            u = loop[i]
+            v = loop[i + 1]
+
+            w = self._cost_residual_matrix[u][v]
+
+            self._residual_matrix[u][v] -= delta
+            self._residual_matrix[v][u] += delta
+
+            if self._residual_matrix[u][v] == 0:
+                self._cost_residual_matrix[u][v] = 0
+
+            self._cost_residual_matrix[v][u] = -w
 
     def _get_residual_matrices(self):
         """Возвращает остаточные сети, созданные на основе матриц
@@ -86,7 +178,13 @@ class MinCostFlowCalculator(MaxFlowCalculator):
     def _get_cost_by_flow(self) -> int:
         """Возвращает суммарную стоимость транспортировки на основе матрицы локальных потоков
         и матрицы стоимостей"""
-        pass
+        total_cost = 0
+        for u in range(self._order):
+            for v in range(self._order):
+                f = self._flow_matrix[u][v]
+                if f:
+                    total_cost += f * self._cost_matrix[u][v]
+        return total_cost
 
 
 if __name__ == "__main__":
