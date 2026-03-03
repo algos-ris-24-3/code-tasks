@@ -57,40 +57,44 @@ class MinCostFlowCalculator(MaxFlowCalculator):
     def _find_negative_loop(self) -> list[int]:
         """Возвращает найденный цикл отрицательной стоимости в остаточной сети
         стоимости транспортировки. Возвращает пустой список, если цикл не найден."""
-        distances = [0] * self._order
-        predecessors = [None] * self._order
+        order = self._order
+        super_source_idx = order
+        extended_order = order + 1
 
-        edges = []
-        for row_idx in range(self._order):
-            for col_idx in range(self._order):
+        dist_matrix = [[None] * extended_order for _ in range(extended_order)]
+        for i in range(extended_order):
+            dist_matrix[i][i] = 0
+
+        for row_idx in range(order):
+            for col_idx in range(order):
                 if self._residual_matrix[row_idx][col_idx] > 0:
-                    edges.append((row_idx, col_idx, self._cost_residual_matrix[row_idx][col_idx]))
+                    dist_matrix[row_idx][col_idx] = self._cost_residual_matrix[row_idx][col_idx]
 
-        last_updated_vertex = None
-        for i in range(self._order):
-            last_updated_vertex = None
-            for row_idx, col_idx, weight in edges:
-                if distances[row_idx] + weight < distances[col_idx]:
-                    distances[col_idx] = distances[row_idx] + weight
-                    predecessors[col_idx] = row_idx
-                    last_updated_vertex = col_idx
+        for vertex_idx in range(order):
+            dist_matrix[super_source_idx][vertex_idx] = 0
 
-        if last_updated_vertex is None:
-            return []
+        try:
+            bellman_ford(dist_matrix, super_source_idx)
+        except NegativeLoopBellmanFordError as error:
+            predecessors = error.predecessors
+            last_updated_vertex = error.last_updated_vertex_idx
 
-        curr = last_updated_vertex
-        for _ in range(self._order):
-            curr = predecessors[curr]
+            curr = last_updated_vertex
+            for _ in range(extended_order):
+                curr = predecessors[curr]
 
-        cycle = []
-        col_idx = curr
-        while True:
-            cycle.append(col_idx)
-            if col_idx == curr and len(cycle) > 1:
-                break
-            col_idx = predecessors[col_idx]
+            cycle = []
+            col_idx = curr
+            while True:
+                cycle.append(col_idx)
+                if col_idx == curr and len(cycle) > 1:
+                    break
+                col_idx = predecessors[col_idx]
 
-        return cycle[::-1]
+            cycle = [v for v in cycle if v != super_source_idx]
+            return cycle[::-1]
+
+        return []
 
     def _remove_negative_loop(self, loop: list[int]) -> None:
         """Удаляет цикл отрицательной стоимости в остаточных сетях потоков и стоимостей."""
