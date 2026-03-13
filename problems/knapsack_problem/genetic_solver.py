@@ -1,4 +1,5 @@
 import random as rnd
+import time
 
 from problems.knapsack_problem.bb_solver import BranchAndBoundSolver
 from problems.knapsack_problem.brute_force_solver import BruteForceSolver
