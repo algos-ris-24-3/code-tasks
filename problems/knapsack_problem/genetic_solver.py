@@ -174,6 +174,5 @@ if __name__ == "__main__":
     print(f"Ограничение вместимости рюкзака: {weight_limit}")
     solver = GeneticSolver(weights, costs, weight_limit)
     result = solver.get_knapsack()
-    print(
-        f"Максимальная стоимость: {result.cost}, " f"индексы предметов: {result.items}"
-    )
+    print("Максимальная стоимость:", result.cost)
+    print("Индексы предметов:", [i + 1 for i in result.items])
