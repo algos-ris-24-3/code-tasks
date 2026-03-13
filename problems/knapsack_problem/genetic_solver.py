@@ -55,19 +55,126 @@ class GeneticSolver(KnapsackAbstractSolver):
 
     def get_knapsack(self, epoch_cnt=EPOCH_CNT) -> KnapsackSolution:
         """Решает задачу о рюкзаке с использованием генетического алгоритма."""
-        pass
+        if self.item_cnt <= BRUTE_FORCE_BOUND:
+            return BruteForceSolver(self._weights, self._costs, self._weight_limit).get_knapsack()
+        
+        for epoch in range(epoch_cnt):
+            generation = {}
+
+            while len(generation) < self.__population_cnt:
+                first_parent = self.tournament()
+                second_parent = self.tournament()
+
+                first_child, second_child = self.__cross_items(first_parent, second_parent)
+
+                first_child = self.__mutation(first_child)
+                second_child = self.__mutation(second_child)
+
+                first_fitness = self.__get_fit(first_child)
+                second_fitness = self.__get_fit(second_child)
+
+                generation[first_child] = first_fitness
+
+                if len(generation) < self.__population_cnt:
+                    generation[second_child] = second_fitness
+
+            elite = 0
+
+            elite_fitness = -1
+
+            for possible_elite, fitness in self.__population.items():
+                if fitness > elite_fitness:
+                    elite_fitness = fitness
+
+                    elite = possible_elite
+
+            if elite not in generation or generation[elite] < elite_fitness:
+                generation[elite] = elite_fitness
+
+            self.__population = generation
+
+        best_solution = 0
+
+        best_fitness = -1
+
+        for possible, fit in self.__population.items():
+            if fit > best_fitness:
+                best_fitness = fit
+
+                best_solution = possible
+
+        if best_fitness <= 0:
+            return KnapsackSolution(0, [])    
+
+        bin_view = self.__mask.format(best_solution)
+
+        taken = [index for index, digit in enumerate(bin_view) if digit == '1']
+
+        return KnapsackSolution(best_fitness, taken)    
 
     def __generate_population(self, population_cnt: int) -> dict[int:int]:
-        pass
+        population = {}
+
+        while len(population) < population_cnt:
+            possible = rnd.randint(0, 2**self.item_cnt - 1)
+
+            if possible not in population:
+                population[possible] = self.__get_fit(possible)
+
+        return population
 
     def __cross_items(self, ancestor1: int, ancestor2: int) -> tuple[int, int]:
-        pass
+        first_bin = self.__mask.format(ancestor1)
+        second_bin = self.__mask.format(ancestor2)
+
+        first_dot = rnd.randint(0, self.item_cnt - 1)
+        second_dot = rnd.randint(first_dot, self.item_cnt)
+
+        first_child = first_bin[:first_dot] + second_bin[first_dot:second_dot] + first_bin[second_dot:]
+        second_child = second_bin[:first_dot] + first_bin[first_dot:second_dot] + second_bin[second_dot:]
+
+        return int(first_child, 2), int(second_child, 2)
 
     def __mutation(self, item_set: int) -> int:
-        pass
+        for index in range(self.item_cnt):
+            if rnd.random() < 0.01:
+                item_set ^= (1 << index)
+
+        return item_set
 
     def __get_fit(self, item):
-        pass
+        bin_view = self.__mask.format(item)
+
+        is_taken = []
+
+        for digit in bin_view:
+            if digit == '1':
+                is_taken.append(True)
+            else:
+                is_taken.append(False)
+
+        return self.get_cost(is_taken)
+
+    def tournament(self):
+        individual_amount = 2
+
+        possible = list(self.__population.keys())
+
+        participants = rnd.sample(possible, min(individual_amount, len(possible)))
+
+        winner = 0
+
+        winner_fitness = -1
+
+        for participant in participants:
+            fitness = self.__population[participant]
+
+            if fitness > winner_fitness:
+                winner_fitness = fitness
+
+                winner = participant
+
+        return winner
 
 
 if __name__ == "__main__":
