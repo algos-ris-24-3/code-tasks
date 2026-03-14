@@ -7,9 +7,11 @@ if __name__ == "__main__":
     print("Пример решения задачи о рюкзаке\n")
     print(f"Веса предметов для комплектования рюкзака: {weights}")
     print(f"Стоимости предметов для комплектования рюкзака: {costs}")
-    print(f"Ограничение вместимости рюкзака: {weight_limit}")
+    print(f"Ограничение вместимости рюкзака: {weight_limit}\n")
+
     solver = GeneticSolver(weights, costs, weight_limit)
-    result = solver.get_knapsack()
-    print(
-        f"Максимальная стоимость: {result.cost}, " f"индексы предметов: {result.items}"
-    )
+
+    for run in range(1, 4):
+        print(f"Запуск {run} (поколения {(run-1)*10+1}-{run*10})")
+        result = solver.get_knapsack(epoch_cnt=10, verbose=True)
+        print(f"\nЛучший результат: стоимость = {result.cost}, предметы={result.items}\n")
