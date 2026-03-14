@@ -55,19 +55,97 @@ class GeneticSolver(KnapsackAbstractSolver):
 
     def get_knapsack(self, epoch_cnt=EPOCH_CNT) -> KnapsackSolution:
         """Решает задачу о рюкзаке с использованием генетического алгоритма."""
-        pass
+        if self.item_cnt <= BRUTE_FORCE_BOUND:
+            return self._solve_by_brute_force()
+
+        for _ in range(epoch_cnt):
+            new_population = self._create_next_generation()
+            self.__population = new_population
+
+        return self._get_best_solution()
+
+    def _solve_by_brute_force(self) -> KnapsackSolution:
+        """Решает задачу полным перебором для маленьких входных данных."""
+        brute_solver = BruteForceSolver(
+            self.weights, self.costs, self.weight_limit
+        )
+        return brute_solver.get_knapsack()
+    
+    def _create_next_generation(self) -> dict[int, int]:
+        """Создает новое поколение из текущей популяции."""
+        best_item = max(self.__population, key=self.__population.get)
+        new_population = {best_item: self.__population[best_item]}
+
+        while len(new_population) < self.__population_cnt:
+            child1, child2 = self._create_two_children()
+            
+            new_population[child1] = self.__get_fit(child1)
+            if len(new_population) < self.__population_cnt:
+                new_population[child2] = self.__get_fit(child2)
+
+        return new_population
+    
+    def _create_two_children(self) -> tuple[int, int]:
+        """Создает двух потомков от двух родителей."""
+        ancestor1 = self._tournament_selection()
+        ancestor2 = self._tournament_selection()
+
+        child1, child2 = self.__cross_items(ancestor1, ancestor2)
+        child1 = self.__mutation(child1)
+        child2 = self.__mutation(child2)
+
+        return child1, child2
+
+    def _tournament_selection(self) -> int:
+        """Турнирный отбор (размер турнира 3)."""
+        tourn_size = min(3, len(self.__population))
+        participants = rnd.sample(list(self.__population.keys()), tourn_size)
+        return max(participants, key=lambda x: self.__population[x])
+
+    def _get_best_solution(self) -> KnapsackSolution:
+        """Возвращает лучшее решение из текущей популяции."""
+        best_item = max(self.__population, key=self.__population.get)
+        best_cost = self.__population[best_item]
+        selected_str = self.__mask.format(best_item)
+        items = [idx for idx, bit in enumerate(selected_str) if bit == "1"]
+        return KnapsackSolution(cost=best_cost, items=items)
 
     def __generate_population(self, population_cnt: int) -> dict[int:int]:
-        pass
+        """Генерирует начальную популяцию случайных особей."""
+        population = {}
+        max_value = (1 << self.item_cnt) - 1
+        while len(population) < population_cnt:
+            item = rnd.randint(0, max_value)
+            population[item] = self.__get_fit(item)
+        return population
 
     def __cross_items(self, ancestor1: int, ancestor2: int) -> tuple[int, int]:
-        pass
+        """Двухточечное скрещивание"""
+        if self.item_cnt < 2:
+            return ancestor1, ancestor2
+
+        str1 = self.__mask.format(ancestor1)
+        str2 = self.__mask.format(ancestor2)
+
+        cut1 = rnd.randint(0, self.item_cnt - 1)
+        cut2 = rnd.randint(cut1 + 1, self.item_cnt)
+
+        child1_str = str1[:cut1] + str2[cut1:cut2] + str1[cut2:]
+        child2_str = str2[:cut1] + str1[cut1:cut2] + str2[cut2:]
+
+        return int(child1_str, 2), int(child2_str, 2)
 
     def __mutation(self, item_set: int) -> int:
-        pass
+        """Мутация с вероятностью 5%."""
+        if rnd.random() < 0.05:
+            bit_pos = rnd.randint(0, self.item_cnt - 1)
+            item_set ^= (1 << bit_pos)
+        return item_set
 
     def __get_fit(self, item):
-        pass
+        """Вычисляет значение фитнес-функции для особи."""
+        selected = [bool(int(char)) for char in self.__mask.format(item)]
+        return self.get_cost(selected)
 
 
 if __name__ == "__main__":
