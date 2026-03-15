@@ -55,19 +55,89 @@ class GeneticSolver(KnapsackAbstractSolver):
 
     def get_knapsack(self, epoch_cnt=EPOCH_CNT) -> KnapsackSolution:
         """Решает задачу о рюкзаке с использованием генетического алгоритма."""
-        pass
+        if self.item_cnt <= BRUTE_FORCE_BOUND:
+            return BruteForceSolver(self.weights, self.costs, self.weight_limit).get_knapsack()
 
+        for _ in range(epoch_cnt):
+            fitness_values = list(self.__population.values())
+            keys = list(self.__population.keys())
+            
+            offspring = {}
+            while len(offspring) < self.__population_cnt:
+                parent1 = rnd.choices(keys, weights=fitness_values, k=1)[0]
+                parent2 = rnd.choices(keys, weights=fitness_values, k=1)[0]
+                child1, child2 = self.__cross_items(parent1, parent2)
+                
+                for child in (child1, child2):
+                    if len(offspring) < self.__population_cnt:
+                        mutated = self.__mutation(child)
+                        fit = self.__get_fit(mutated)
+                        if fit > 0:
+                            offspring[mutated] = fit
+            
+            combined = {**self.__population, **offspring}
+            
+            sorted_items = sorted(combined.items(), key=lambda x: x[1], reverse=True)
+            self.__population = dict(sorted_items[:self.__population_cnt])
+        
+        best_item_mask = max(self.__population, key=self.__population.get)
+        item_idx = [i for i in range(self.item_cnt) if (best_item_mask >> (self.item_cnt - 1 - i)) & 1]
+        return KnapsackSolution(self.__population[best_item_mask], item_idx)
+    
     def __generate_population(self, population_cnt: int) -> dict[int:int]:
-        pass
-
+        """Генерирует начальную случайную популяцию."""
+        population = {}
+        while len(population) < population_cnt:
+            item_mask = rnd.randint(0, (1 << self.item_cnt) - 1)
+            while self.__get_fit(item_mask) == 0:
+                ones_idx = [
+                    i for i in range(self.item_cnt)
+                    if (item_mask >> (self.item_cnt - 1 - i)) & 1
+                ]
+                if not ones_idx:
+                    break
+                idx_to_remove = rnd.choice(ones_idx)
+                item_mask &= ~(1 << (self.item_cnt - 1 - idx_to_remove))
+            fit_value = self.__get_fit(item_mask)
+            if fit_value > 0:
+                population[item_mask] = fit_value
+            elif len(population) == 0 and item_mask == 0:
+                population[0] = 0
+        return population
+    
     def __cross_items(self, ancestor1: int, ancestor2: int) -> tuple[int, int]:
-        pass
+        """Одноточечное скрещивание."""
+        if self.item_cnt < 2:
+            return ancestor1, ancestor2
+        
+        point = rnd.randint(1, self.item_cnt - 1)
+        mask = (1 << (self.item_cnt - point)) - 1
+        
+        prefix1 = ancestor1 & ~mask
+        suffix1 = ancestor1 & mask
+        prefix2 = ancestor2 & ~mask
+        suffix2 = ancestor2 & mask
+        
+        return (prefix1 | suffix2), (prefix2 | suffix1)
 
     def __mutation(self, item_set: int) -> int:
-        pass
+        """Мутация: инверсия случайного бита с вероятностью 10%."""
+        if rnd.random() < 0.1:
+            bit_pos = rnd.randint(0, self.item_cnt - 1)
+            item_set ^= (1 << bit_pos)
+        return item_set
 
-    def __get_fit(self, item):
-        pass
+    def __get_fit(self, item_mask: int) -> int:
+        """Вычисляет значение фитнес-функции для заданного набора предметов."""
+        total_weight = 0
+        total_cost = 0
+        for i in range(self.item_cnt):
+            if (item_mask >> (self.item_cnt - 1 - i)) & 1:
+                total_weight += self.weights[i]
+                total_cost += self.costs[i]
+        if total_weight > self.weight_limit:
+            return 0
+        return total_cost
 
 
 if __name__ == "__main__":
