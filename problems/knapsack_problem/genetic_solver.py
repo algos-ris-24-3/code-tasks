@@ -97,7 +97,7 @@ class GeneticSolver(KnapsackAbstractSolver):
         return child1, child2
 
     def _tournament_selection(self) -> int:
-        """Турнирный отбор (размер турнира 3)."""
+        """Турнирный отбор."""
         tourn_size = min(3, len(self.__population))
         participants = rnd.sample(list(self.__population.keys()), tourn_size)
         return max(participants, key=lambda x: self.__population[x])
