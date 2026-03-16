@@ -7,14 +7,17 @@ from problems.knapsack_problem.knapsack_abs_solver import (
     KnapsackSolution,
 )
 
-POPULATION_LIMIT = 1000
+POPULATION_LIMIT = 500
 """Предельный размер популяции."""
 
-EPOCH_CNT = 100
+EPOCH_CNT = 500
 """Количество поколений по умолчанию."""
 
 BRUTE_FORCE_BOUND = 5
 """Размер входных данных задачи, до которого используется полный перебор."""
+
+ELITE_RATIO = 0.1
+"""Доля лучших особей, сохраняемых между поколениями (элитизм)."""
 
 
 class GeneticSolver(KnapsackAbstractSolver):
@@ -41,7 +44,10 @@ class GeneticSolver(KnapsackAbstractSolver):
         super().__init__(weights, costs, weight_limit)
         self.__mask = "{0:0" + str(len(weights)) + "b}"
         self.__population_cnt = min(2**self.item_cnt / 2, POPULATION_LIMIT)
+        self.__elite_cnt = max(2, int(self.__population_cnt * ELITE_RATIO))
         self.__population = self.__generate_population(self.__population_cnt)
+        self.__best_solution = None
+        self.__best_fitness = 0
 
     @property
     def population(self) -> list[tuple[str, int]]:
@@ -54,90 +60,131 @@ class GeneticSolver(KnapsackAbstractSolver):
         return population_data
 
     def get_knapsack(self, epoch_cnt=EPOCH_CNT) -> KnapsackSolution:
-        """Решает задачу о рюкзаке с использованием генетического алгоритма."""
+        """Решает задачу о рюкзаке с использованием генетического алгоритма.
+        """
         if self.item_cnt <= BRUTE_FORCE_BOUND:
-            return BruteForceSolver(self.weights, self.costs, self.weight_limit).get_knapsack()
-
+            solver = BruteForceSolver(self.weights, self.costs, self.weight_limit)
+            return solver.get_knapsack()
+        
+        self.__update_best_solution()
+        
         for _ in range(epoch_cnt):
-            fitness_values = list(self.__population.values())
-            keys = list(self.__population.keys())
+            total_fitness = sum(self.__population.values())
             
-            offspring = {}
-            while len(offspring) < self.__population_cnt:
-                parent1 = rnd.choices(keys, weights=fitness_values, k=1)[0]
-                parent2 = rnd.choices(keys, weights=fitness_values, k=1)[0]
+            if total_fitness == 0:
+                self.__population = self.__generate_population(self.__population_cnt)
+                continue
+            
+            elite = self.__get_elite()
+            
+            new_population = dict(elite)
+            
+            while len(new_population) < self.__population_cnt:
+                parent1 = self.__roulette_selection(total_fitness)
+                parent2 = self.__roulette_selection(total_fitness)
+                
                 child1, child2 = self.__cross_items(parent1, parent2)
                 
-                for child in (child1, child2):
-                    if len(offspring) < self.__population_cnt:
-                        mutated = self.__mutation(child)
-                        fit = self.__get_fit(mutated)
-                        if fit > 0:
-                            offspring[mutated] = fit
+                child1 = self.__mutation(child1)
+                child2 = self.__mutation(child2)
+                
+                if child1 not in new_population:
+                    new_population[child1] = self.__get_fit(child1)
+                if child2 not in new_population and len(new_population) < self.__population_cnt:
+                    new_population[child2] = self.__get_fit(child2)
             
-            combined = {**self.__population, **offspring}
+            self.__population = new_population
             
-            sorted_items = sorted(combined.items(), key=lambda x: x[1], reverse=True)
-            self.__population = dict(sorted_items[:self.__population_cnt])
+            self.__update_best_solution()
         
-        best_item_mask = max(self.__population, key=self.__population.get)
-        item_idx = [i for i in range(self.item_cnt) if (best_item_mask >> (self.item_cnt - 1 - i)) & 1]
-        return KnapsackSolution(self.__population[best_item_mask], item_idx)
+        return self.__create_solution(self.__best_solution, self.__best_fitness)
+
+    def __update_best_solution(self) -> None:
+        """Обновляет лучшее найденное решение на основе текущей популяции."""
+        for item, fitness in self.__population.items():
+            if fitness > self.__best_fitness:
+                self.__best_fitness = fitness
+                self.__best_solution = item
     
+    def __get_elite(self) -> dict[int, int]:
+        """Возвращает лучших по фитнесу особей."""
+        sorted_population = sorted(
+            self.__population.items(), 
+            key=lambda x: x[1], 
+            reverse=True
+        )
+        return dict(sorted_population[:self.__elite_cnt])
+    
+    def __create_solution(self, item: int, cost: int) -> KnapsackSolution:
+        """Создает объект решения из битовой маски."""
+        items = []
+        if item is not None:
+            binary_str = self.__mask.format(item)
+            for i, bit in enumerate(binary_str):
+                if bit == '1':
+                    items.append(i)
+        return KnapsackSolution(cost, items)
+
+    def __roulette_selection(self, total_fitness: int) -> int:
+        """Выбор особи методом рулетки."""
+        pick = rnd.uniform(0, total_fitness)
+        current = 0
+        for item, fitness in self.__population.items():
+            current += fitness
+            if current >= pick:
+                return item
+        return list(self.__population.keys())[-1]
+
     def __generate_population(self, population_cnt: int) -> dict[int:int]:
-        """Генерирует начальную случайную популяцию."""
+        """Генерирует начальную популяцию случайных особей."""
         population = {}
+        max_value = 2 ** self.item_cnt
+        
         while len(population) < population_cnt:
-            item_mask = rnd.randint(0, (1 << self.item_cnt) - 1)
-            while self.__get_fit(item_mask) == 0:
-                ones_idx = [
-                    i for i in range(self.item_cnt)
-                    if (item_mask >> (self.item_cnt - 1 - i)) & 1
-                ]
-                if not ones_idx:
-                    break
-                idx_to_remove = rnd.choice(ones_idx)
-                item_mask &= ~(1 << (self.item_cnt - 1 - idx_to_remove))
-            fit_value = self.__get_fit(item_mask)
-            if fit_value > 0:
-                population[item_mask] = fit_value
-            elif len(population) == 0 and item_mask == 0:
-                population[0] = 0
+            item = rnd.randint(0, max_value - 1)
+            if item not in population:
+                population[item] = self.__get_fit(item)
+        
         return population
-    
-    def __cross_items(self, ancestor1: int, ancestor2: int) -> tuple[int, int]:
-        """Одноточечное скрещивание."""
-        if self.item_cnt < 2:
-            return ancestor1, ancestor2
+
+    def __cross_items(self, parent1: int, parent2: int) -> tuple[int, int]:
+        """Одноточечное скрещивание двух особей."""
+        if self.item_cnt <= 1:
+            return parent1, parent2
         
-        point = rnd.randint(1, self.item_cnt - 1)
-        mask = (1 << (self.item_cnt - point)) - 1
+        crossover_point = rnd.randint(1, self.item_cnt - 1)
         
-        prefix1 = ancestor1 & ~mask
-        suffix1 = ancestor1 & mask
-        prefix2 = ancestor2 & ~mask
-        suffix2 = ancestor2 & mask
+        right_mask = (1 << crossover_point) - 1
+        left_mask = ((1 << self.item_cnt) - 1) ^ right_mask
         
-        return (prefix1 | suffix2), (prefix2 | suffix1)
+        child1 = (parent1 & left_mask) | (parent2 & right_mask)
+        child2 = (parent2 & left_mask) | (parent1 & right_mask)
+        
+        return child1, child2
 
     def __mutation(self, item_set: int) -> int:
-        """Мутация: инверсия случайного бита с вероятностью 10%."""
-        if rnd.random() < 0.1:
-            bit_pos = rnd.randint(0, self.item_cnt - 1)
-            item_set ^= (1 << bit_pos)
+        """Мутация особи - инвертирование случайного бита с небольшой вероятностью."""
+        mutation_rate = 1.0 / self.item_cnt
+        
+        for i in range(self.item_cnt):
+            if rnd.random() < mutation_rate:
+                item_set ^= (1 << i)
+        
         return item_set
 
-    def __get_fit(self, item_mask: int) -> int:
-        """Вычисляет значение фитнес-функции для заданного набора предметов."""
+    def __get_fit(self, item: int) -> int:
+        """Вычисляет значение фитнес-функции для особи."""
         total_weight = 0
         total_cost = 0
+        
         for i in range(self.item_cnt):
-            if (item_mask >> (self.item_cnt - 1 - i)) & 1:
+            if item & (1 << (self.item_cnt - 1 - i)):
                 total_weight += self.weights[i]
                 total_cost += self.costs[i]
-        if total_weight > self.weight_limit:
-            return 0
-        return total_cost
+        
+        if total_weight <= self.weight_limit:
+            return total_cost
+        return 0
 
 
 if __name__ == "__main__":
