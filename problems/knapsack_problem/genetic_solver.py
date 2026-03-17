@@ -59,48 +59,66 @@ class GeneticSolver(KnapsackAbstractSolver):
             return BruteForceSolver(self._weights, self._costs, self._weight_limit).get_knapsack()
         
         for epoch in range(epoch_cnt):
-            generation = {}
+            self.generation_evolution()
 
-            while len(generation) < self.__population_cnt:
-                first_parent = self.tournament()
-                second_parent = self.tournament()
+        return self.get_solution()
+         
 
-                first_child, second_child = self.__cross_items(first_parent, second_parent)
+    def generation_evolution(self):
+        generation = {}
 
-                first_child = self.__mutation(first_child)
-                second_child = self.__mutation(second_child)
+        while len(generation) < self.__population_cnt:
+            first_parent = self.tournament()
+            second_parent = self.tournament()
 
-                first_fitness = self.__get_fit(first_child)
-                second_fitness = self.__get_fit(second_child)
+            first_child, second_child = self.__cross_items(first_parent, second_parent)
 
+            first_child = self.__mutation(first_child)
+            second_child = self.__mutation(second_child)
+
+            first_fitness = self.__get_fit(first_child)
+            second_fitness = self.__get_fit(second_child)
+
+            if first_fitness > 0 and first_child not in generation:
                 generation[first_child] = first_fitness
 
-                if len(generation) < self.__population_cnt:
+            if len(generation) < self.__population_cnt:
+                if second_fitness > 0 and second_child not in generation:
                     generation[second_child] = second_fitness
 
-            elite = 0
+        self.fill_if_needed(generation)
 
-            elite_fitness = -1
+        self.get_elite(generation)
 
-            for possible_elite, fitness in self.__population.items():
-                if fitness > elite_fitness:
-                    elite_fitness = fitness
+        self.__population = generation
 
-                    elite = possible_elite
+    def fill_if_needed(self, generation: dict[int:int]):
+        while len(generation) < self.__population_cnt:
+            possible = rnd.randint(0, 2**self.item_cnt - 1)
 
-            if elite not in generation or generation[elite] < elite_fitness:
-                generation[elite] = elite_fitness
+            if possible not in generation:
+                generation[possible] = self.__get_fit(possible)
 
-            self.__population = generation
+    def get_elite(self, generation: dict[int:int]):
+        elite = 0
+        elite_fitness = -1
 
+        for possible_elite, fitness in self.__population.items():
+            if fitness > elite_fitness:
+                elite_fitness = fitness
+
+                elite = possible_elite
+
+        if elite not in generation or generation[elite] < elite_fitness:
+            generation[elite] = elite_fitness
+
+    def get_solution(self):
         best_solution = 0
-
         best_fitness = -1
 
         for possible, fit in self.__population.items():
             if fit > best_fitness:
                 best_fitness = fit
-
                 best_solution = possible
 
         if best_fitness <= 0:
@@ -110,11 +128,24 @@ class GeneticSolver(KnapsackAbstractSolver):
 
         taken = [index for index, digit in enumerate(bin_view) if digit == '1']
 
-        return KnapsackSolution(best_fitness, taken)    
+        return KnapsackSolution(best_fitness, taken)
 
     def __generate_population(self, population_cnt: int) -> dict[int:int]:
         population = {}
 
+        max_attempts = population_cnt * 50
+        attempts = 0
+        
+        while len(population) < population_cnt and attempts < max_attempts:
+            attempts += 1
+
+            possible = rnd.randint(0, 2**self.item_cnt - 1)
+            
+            fitness = self.__get_fit(possible)
+            
+            if fitness > 0 and possible not in population:
+                population[possible] = fitness
+        
         while len(population) < population_cnt:
             possible = rnd.randint(0, 2**self.item_cnt - 1)
 
@@ -122,7 +153,7 @@ class GeneticSolver(KnapsackAbstractSolver):
                 population[possible] = self.__get_fit(possible)
 
         return population
-
+    
     def __cross_items(self, ancestor1: int, ancestor2: int) -> tuple[int, int]:
         first_bin = self.__mask.format(ancestor1)
         second_bin = self.__mask.format(ancestor2)
