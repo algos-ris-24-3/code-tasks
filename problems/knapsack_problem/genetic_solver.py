@@ -190,57 +190,84 @@ class GeneticSolver(KnapsackAbstractSolver):
         if self.item_cnt < 2:
             return ancestor1, ancestor2
 
+        bits1 = self.__mask.format(ancestor1)
+        bits2 = self.__mask.format(ancestor2)
+
         cross_point = rnd.randint(1, self.item_cnt - 1)
-        mask = (1 << cross_point) - 1
 
-        child1 = (ancestor1 & mask) | (ancestor2 & ~mask)
-        child2 = (ancestor2 & mask) | (ancestor1 & ~mask)
+        child1_bits = bits1[:cross_point] + bits2[cross_point:]
+        child2_bits = bits2[:cross_point] + bits1[cross_point:]
 
-        return child1, child2
+        return int(child1_bits, 2), int(child2_bits, 2)
 
     def __mutation(self, item_set: int) -> int:
         """Мутирует особь инверсией одного случайного бита."""
-        if rnd.random() < 0.1:
-            bit_pos = rnd.randrange(self.item_cnt)
-            item_set ^= 1 << bit_pos
-        return item_set
+        if rnd.random() >= 1 / self.item_cnt:
+            return item_set
+
+        bit_pos = rnd.randint(0, self.item_cnt - 1)
+        return item_set ^ (1 << (self.item_cnt - 1 - bit_pos))
 
     def __repair(self, item: int) -> int:
-        weight = 0
-        chosen = []
+        bits = list(self.__mask.format(item))
 
-        for i in range(self.item_cnt):
-            if (item >> i) & 1:
-                weight += self.weights[i]
-                chosen.append(i)
+        weight = sum(
+            self.weights[i]
+            for i, b in enumerate(bits)
+            if b == "1"
+        )
 
         if weight <= self.weight_limit:
             return item
 
-        chosen.sort(key=lambda i: self.costs[i] / self.weights[i])
+        chosen = [
+            i for i, b in enumerate(bits)
+            if b == "1"
+        ]
+
+        chosen.sort(
+            key=lambda i: self.costs[i] / self.weights[i]
+        )
 
         for i in chosen:
-            item ^= 1 << i
+            bits[i] = "0"
             weight -= self.weights[i]
             if weight <= self.weight_limit:
                 break
 
-        return item
+        return int("".join(bits), 2)
 
     def __local_improve(self, item: int) -> int:
+        """Локально улучшает решение, пытаясь добавить более выгодные предметы
+        без нарушения ограничения веса."""
+        bits = list(self.__mask.format(item))
+
         weight = sum(
             self.weights[i]
-            for i in range(self.item_cnt)
-            if (item >> i) & 1
+            for i, b in enumerate(bits)
+            if b == "1"
         )
 
         for i in self.__ratio:
-            if not ((item >> i) & 1):
-                if weight + self.weights[i] <= self.weight_limit:
-                    item |= 1 << i
-                    weight += self.weights[i]
+            if bits[i] == "0" and weight + self.weights[i] <= self.weight_limit:
+                bits[i] = "1"
+                weight += self.weights[i]
 
-        return item
+        for i in range(self.item_cnt):
+            if bits[i] == "1":
+                for j in self.__ratio:
+                    if bits[j] == "0":
+                        new_weight = weight - self.weights[i] + self.weights[j]
+                        if (
+                            new_weight <= self.weight_limit
+                            and self.costs[j] > self.costs[i]
+                        ):
+                            bits[i] = "0"
+                            bits[j] = "1"
+                            weight = new_weight
+                            break
+
+        return int("".join(bits), 2)
 
     def __greedy_ratio(self):
         w = 0
