@@ -10,7 +10,7 @@ from problems.knapsack_problem.knapsack_abs_solver import (
 POPULATION_LIMIT = 1000
 """Предельный размер популяции."""
 
-EPOCH_CNT = 300
+EPOCH_CNT = 100
 """Количество поколений по умолчанию."""
 
 BRUTE_FORCE_BOUND = 5
@@ -32,25 +32,21 @@ class GeneticSolver(KnapsackAbstractSolver):
         :param weights: Список весов предметов для рюкзака.
         :param costs: Список стоимостей предметов для рюкзака.
         :param weight_limit: Ограничение вместимости рюкзака.
+        :raise TypeError: Если веса или стоимости не являются списком с числовыми
+        значениями, если ограничение вместимости не является целым числом.
+        :raise ValueError: Если в списках присутствует нулевое или отрицательное
+        значение.
         """
         super().__init__(weights, costs, weight_limit)
         self.__mask = "{0:0" + str(len(weights)) + "b}"
-
-        self.__population_cnt = min(POPULATION_LIMIT, max(60, self.item_cnt * 20))
-
-        self.__ratio = sorted(
-            range(self.item_cnt),
-            key=lambda i: costs[i] / weights[i],
-            reverse=True,
-        )
-
-        self.__fitness_cache = {}
-
+        self.__population_cnt = int(min(2**self.item_cnt / 2, POPULATION_LIMIT))
         self.__population = self.__generate_population(self.__population_cnt)
 
     @property
     def population(self) -> list[tuple[str, int]]:
-        """Возвращает список особей текущей популяции."""
+        """Возвращает список особей текущей популяции. Для каждой особи
+        возвращается строка из 0 и 1, а также значение фитнес-функции.
+        """
         return [
             (self.__mask.format(item), fit)
             for item, fit in self.__population.items()
@@ -72,30 +68,22 @@ class GeneticSolver(KnapsackAbstractSolver):
 
             new_population = {}
 
-            elite_cnt = max(1, self.__population_cnt // 15)
+            elite_cnt = max(1, self.__population_cnt // 20)
 
             for item, fit in sorted(
                 population_items, key=lambda x: x[1], reverse=True
             )[:elite_cnt]:
                 new_population[item] = fit
 
-            pair_cnt = max(1, self.__population_cnt)
+            pair_cnt = self.__population_cnt
 
             for _ in range(pair_cnt):
-
                 parent1 = self.__roulette_select(population_items, total_fit)
                 parent2 = self.__roulette_select(population_items, total_fit)
 
                 child1, child2 = self.__cross_items(parent1, parent2)
-
                 child1 = self.__mutation(child1)
                 child2 = self.__mutation(child2)
-
-                child1 = self.__repair(child1)
-                child2 = self.__repair(child2)
-
-                child1 = self.__local_improve(child1)
-                child2 = self.__local_improve(child2)
 
                 if child1 not in new_population:
                     new_population[child1] = self.__get_fit(child1)
@@ -108,6 +96,8 @@ class GeneticSolver(KnapsackAbstractSolver):
 
                 if len(new_population) >= self.__population_cnt:
                     break
+
+            
 
             if len(new_population) < self.__population_cnt:
                 for item, fit in sorted(
@@ -127,19 +117,14 @@ class GeneticSolver(KnapsackAbstractSolver):
                     and attempts < max_attempts
                 ):
                     item = rnd.getrandbits(self.item_cnt)
-                    item = self.__repair(item)
-                    item = self.__local_improve(item)
-
                     if item not in new_population:
                         new_population[item] = self.__get_fit(item)
-
                     attempts += 1
 
             self.__population = new_population
 
             current_best = max(self.__population, key=self.__population.get)
             current_best_fit = self.__population[current_best]
-
             if current_best_fit > best_fit:
                 best_item = current_best
                 best_fit = current_best_fit
@@ -152,38 +137,13 @@ class GeneticSolver(KnapsackAbstractSolver):
     def __generate_population(self, population_cnt: int) -> dict[int, int]:
         """Генерирует начальную популяцию."""
         population = {}
+        max_unique_cnt = min(population_cnt, 2**self.item_cnt)
 
-        seeds = [
-            self.__greedy_ratio(),
-            self.__greedy_cost(),
-            self.__greedy_randomised(),
-        ]
-
-        for s in seeds:
-            population[s] = self.__get_fit(s)
-
-        while len(population) < population_cnt:
+        while len(population) < max_unique_cnt:
             item = rnd.getrandbits(self.item_cnt)
-            item = self.__repair(item)
-            item = self.__local_improve(item)
             population[item] = self.__get_fit(item)
 
         return population
-
-    def __roulette_select(self, population_items, total_fit):
-        """Выбор особи рулеткой."""
-        if total_fit <= 0:
-            return rnd.choice(population_items)[0]
-
-        pick = rnd.uniform(0, total_fit)
-        current = 0
-
-        for item, fit in population_items:
-            current += fit
-            if current >= pick:
-                return item
-
-        return population_items[-1][0]
 
     def __cross_items(self, ancestor1: int, ancestor2: int) -> tuple[int, int]:
         """Выполняет одноточечное скрещивание."""
@@ -199,105 +159,28 @@ class GeneticSolver(KnapsackAbstractSolver):
         child2_bits = bits2[:cross_point] + bits1[cross_point:]
 
         return int(child1_bits, 2), int(child2_bits, 2)
+    
+    def __roulette_select(self, population_items, total_fit):
+
+        if total_fit == 0:
+            return rnd.choice(population_items)[0]
+
+        pick = rnd.uniform(0, total_fit)
+        current = 0
+
+        for item, fit in population_items:
+            current += fit
+            if current >= pick:
+                return item
 
     def __mutation(self, item_set: int) -> int:
         """Мутирует особь инверсией одного случайного бита."""
-        if rnd.random() >= 1 / self.item_cnt:
-            return item_set
 
-        bit_pos = rnd.randint(0, self.item_cnt - 1)
-        return item_set ^ (1 << (self.item_cnt - 1 - bit_pos))
+        if rnd.random() < 2 / self.item_cnt:
+            bit_pos = rnd.randint(0, self.item_cnt - 1)
+            item_set ^= 1 << (self.item_cnt - 1 - bit_pos)
 
-    def __repair(self, item: int) -> int:
-        bits = list(self.__mask.format(item))
-
-        weight = sum(
-            self.weights[i]
-            for i, b in enumerate(bits)
-            if b == "1"
-        )
-
-        if weight <= self.weight_limit:
-            return item
-
-        chosen = [
-            i for i, b in enumerate(bits)
-            if b == "1"
-        ]
-
-        chosen.sort(
-            key=lambda i: self.costs[i] / self.weights[i]
-        )
-
-        for i in chosen:
-            bits[i] = "0"
-            weight -= self.weights[i]
-            if weight <= self.weight_limit:
-                break
-
-        return int("".join(bits), 2)
-
-    def __local_improve(self, item: int) -> int:
-        """Локально улучшает решение, пытаясь добавить более выгодные предметы
-        без нарушения ограничения веса."""
-        bits = list(self.__mask.format(item))
-
-        weight = sum(
-            self.weights[i]
-            for i, b in enumerate(bits)
-            if b == "1"
-        )
-
-        for i in self.__ratio:
-            if bits[i] == "0" and weight + self.weights[i] <= self.weight_limit:
-                bits[i] = "1"
-                weight += self.weights[i]
-
-        for i in range(self.item_cnt):
-            if bits[i] == "1":
-                for j in self.__ratio:
-                    if bits[j] == "0":
-                        new_weight = weight - self.weights[i] + self.weights[j]
-                        if (
-                            new_weight <= self.weight_limit
-                            and self.costs[j] > self.costs[i]
-                        ):
-                            bits[i] = "0"
-                            bits[j] = "1"
-                            weight = new_weight
-                            break
-
-        return int("".join(bits), 2)
-
-    def __greedy_ratio(self):
-        w = 0
-        item = 0
-        for i in self.__ratio:
-            if w + self.weights[i] <= self.weight_limit:
-                item |= 1 << i
-                w += self.weights[i]
-        return item
-
-    def __greedy_cost(self):
-        order = sorted(range(self.item_cnt), key=lambda i: self.costs[i], reverse=True)
-        w = 0
-        item = 0
-        for i in order:
-            if w + self.weights[i] <= self.weight_limit:
-                item |= 1 << i
-                w += self.weights[i]
-        return item
-
-    def __greedy_randomised(self):
-        w = 0
-        item = 0
-        order = self.__ratio[:]
-        rnd.shuffle(order)
-        for i in order:
-            if w + self.weights[i] <= self.weight_limit:
-                item |= 1 << i
-                w += self.weights[i]
-        return item
+        return item_set
 
     def __get_fit(self, item):
         """Возвращает значение фитнес-функции для особи."""
