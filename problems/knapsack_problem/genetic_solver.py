@@ -39,7 +39,7 @@ class GeneticSolver(KnapsackAbstractSolver):
         """
         super().__init__(weights, costs, weight_limit)
         self.__mask = "{0:0" + str(len(weights)) + "b}"
-        self.__population_cnt = int(min(2 ** self.item_cnt / 2, POPULATION_LIMIT))
+        self.__population_cnt = int(min(2**self.item_cnt / 2, POPULATION_LIMIT))
         self.__population = self.__generate_population(self.__population_cnt)
 
     @property
@@ -56,11 +56,6 @@ class GeneticSolver(KnapsackAbstractSolver):
         """Решает задачу о рюкзаке с использованием генетического алгоритма."""
         if self.item_cnt <= BRUTE_FORCE_BOUND:
             return BruteForceSolver(
-                self.weights, self.costs, self.weight_limit
-            ).get_knapsack()
-
-        if self.item_cnt <= BRUTE_FORCE_BOUND + 10:
-            return BranchAndBoundSolver(
                 self.weights, self.costs, self.weight_limit
             ).get_knapsack()
 
@@ -88,6 +83,7 @@ class GeneticSolver(KnapsackAbstractSolver):
 
             elite = max(self.__population, key=self.__population.get)
             new_population[elite] = self.__population[elite]
+
             pair_cnt = max(1, self.__population_cnt)
 
             for _ in range(pair_cnt):
@@ -101,11 +97,16 @@ class GeneticSolver(KnapsackAbstractSolver):
                 if child1 not in new_population:
                     new_population[child1] = self.__get_fit(child1)
 
-                if len(new_population) < self.__population_cnt and child2 not in new_population:
+                if (
+                    len(new_population) < self.__population_cnt
+                    and child2 not in new_population
+                ):
                     new_population[child2] = self.__get_fit(child2)
 
                 if len(new_population) >= self.__population_cnt:
                     break
+
+            
 
             if len(new_population) < self.__population_cnt:
                 for item, fit in sorted(
@@ -117,11 +118,17 @@ class GeneticSolver(KnapsackAbstractSolver):
                         break
 
             if len(new_population) < self.__population_cnt:
-                all_items = list(range(2 ** self.item_cnt))
-                remaining = [item for item in all_items if item not in new_population]
-                need = min(self.__population_cnt - len(new_population), len(remaining))
-                for item in rnd.sample(remaining, need):
-                    new_population[item] = self.__get_fit(item)
+                attempts = 0
+                max_attempts = self.__population_cnt * 20
+
+                while (
+                    len(new_population) < self.__population_cnt
+                    and attempts < max_attempts
+                ):
+                    item = rnd.getrandbits(self.item_cnt)
+                    if item not in new_population:
+                        new_population[item] = self.__get_fit(item)
+                    attempts += 1
 
             self.__population = new_population
 
@@ -136,13 +143,16 @@ class GeneticSolver(KnapsackAbstractSolver):
 
         return KnapsackSolution(cost=best_fit, items=best_items)
 
-    def __generate_population(self, population_cnt: int) -> dict[int:int]:
+    def __generate_population(self, population_cnt: int) -> dict[int, int]:
         """Генерирует начальную популяцию."""
-        all_items_cnt = 2 ** self.item_cnt
-        actual_cnt = min(population_cnt, all_items_cnt)
+        population = {}
+        max_unique_cnt = min(population_cnt, 2**self.item_cnt)
 
-        items = rnd.sample(range(all_items_cnt), actual_cnt)
-        return {item: self.__get_fit(item) for item in items}
+        while len(population) < max_unique_cnt:
+            item = rnd.getrandbits(self.item_cnt)
+            population[item] = self.__get_fit(item)
+
+        return population
 
     def __cross_items(self, ancestor1: int, ancestor2: int) -> tuple[int, int]:
         """Выполняет одноточечное скрещивание."""
@@ -179,12 +189,15 @@ if __name__ == "__main__":
     weights = [11, 4, 8, 6, 3, 5, 5]
     costs = [17, 6, 11, 10, 5, 8, 6]
     weight_limit = 30
+
     print("Пример решения задачи о рюкзаке\n")
     print(f"Веса предметов для комплектования рюкзака: {weights}")
     print(f"Стоимости предметов для комплектования рюкзака: {costs}")
     print(f"Ограничение вместимости рюкзака: {weight_limit}")
+
     solver = GeneticSolver(weights, costs, weight_limit)
     result = solver.get_knapsack()
+
     print(
         f"Максимальная стоимость: {result.cost}, индексы предметов: {result.items}"
     )
