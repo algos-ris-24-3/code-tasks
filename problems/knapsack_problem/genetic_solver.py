@@ -10,7 +10,7 @@ from problems.knapsack_problem.knapsack_abs_solver import (
 POPULATION_LIMIT = 1000
 """Предельный размер популяции."""
 
-EPOCH_CNT = 500
+EPOCH_CNT = 300
 """Количество поколений по умолчанию."""
 
 BRUTE_FORCE_BOUND = 5
@@ -36,7 +36,7 @@ class GeneticSolver(KnapsackAbstractSolver):
         super().__init__(weights, costs, weight_limit)
         self.__mask = "{0:0" + str(len(weights)) + "b}"
 
-        self.__population_cnt = min(POPULATION_LIMIT, max(80, self.item_cnt * 30))
+        self.__population_cnt = min(POPULATION_LIMIT, max(60, self.item_cnt * 20))
 
         self.__ratio = sorted(
             range(self.item_cnt),
@@ -66,15 +66,13 @@ class GeneticSolver(KnapsackAbstractSolver):
         best_item = max(self.__population, key=self.__population.get)
         best_fit = self.__population[best_item]
 
-        stagnation = 0
-
         for _ in range(epoch_cnt):
             population_items = list(self.__population.items())
             total_fit = sum(fit for _, fit in population_items)
 
             new_population = {}
 
-            elite_cnt = max(2, self.__population_cnt // 20)
+            elite_cnt = max(1, self.__population_cnt // 15)
 
             for item, fit in sorted(
                 population_items, key=lambda x: x[1], reverse=True
@@ -145,13 +143,6 @@ class GeneticSolver(KnapsackAbstractSolver):
             if current_best_fit > best_fit:
                 best_item = current_best
                 best_fit = current_best_fit
-                stagnation = 0
-            else:
-                stagnation += 1
-
-            if stagnation > 40:
-                self.__restart_population()
-                stagnation = 0
 
         best_bits = self.__mask.format(best_item)
         best_items = [idx for idx, bit in enumerate(best_bits) if bit == "1"]
@@ -166,7 +157,6 @@ class GeneticSolver(KnapsackAbstractSolver):
             self.__greedy_ratio(),
             self.__greedy_cost(),
             self.__greedy_randomised(),
-            self.__greedy_reverse(),
         ]
 
         for s in seeds:
@@ -195,21 +185,6 @@ class GeneticSolver(KnapsackAbstractSolver):
 
         return population_items[-1][0]
 
-    def __restart_population(self):
-        elite = sorted(
-            self.__population.items(),
-            key=lambda x: x[1],
-            reverse=True,
-        )[: self.__population_cnt // 5]
-
-        self.__population = dict(elite)
-
-        while len(self.__population) < self.__population_cnt:
-            item = rnd.getrandbits(self.item_cnt)
-            item = self.__repair(item)
-            item = self.__local_improve(item)
-            self.__population[item] = self.__get_fit(item)
-
     def __cross_items(self, ancestor1: int, ancestor2: int) -> tuple[int, int]:
         """Выполняет одноточечное скрещивание."""
         if self.item_cnt < 2:
@@ -224,12 +199,10 @@ class GeneticSolver(KnapsackAbstractSolver):
         return child1, child2
 
     def __mutation(self, item_set: int) -> int:
-        """Мутирует особь инверсией случайных битов."""
-        if rnd.random() < 0.2:
-            flips = rnd.randint(1, 5)
-            for _ in range(flips):
-                bit_pos = rnd.randrange(self.item_cnt)
-                item_set ^= 1 << bit_pos
+        """Мутирует особь инверсией одного случайного бита."""
+        if rnd.random() < 0.1:
+            bit_pos = rnd.randrange(self.item_cnt)
+            item_set ^= 1 << bit_pos
         return item_set
 
     def __repair(self, item: int) -> int:
@@ -267,16 +240,6 @@ class GeneticSolver(KnapsackAbstractSolver):
                     item |= 1 << i
                     weight += self.weights[i]
 
-        for i in range(self.item_cnt):
-            if (item >> i) & 1:
-                for j in self.__ratio:
-                    if not ((item >> j) & 1):
-                        new_w = weight - self.weights[i] + self.weights[j]
-                        if new_w <= self.weight_limit and self.costs[j] > self.costs[i]:
-                            item ^= 1 << i
-                            item |= 1 << j
-                            weight = new_w
-
         return item
 
     def __greedy_ratio(self):
@@ -309,21 +272,16 @@ class GeneticSolver(KnapsackAbstractSolver):
                 w += self.weights[i]
         return item
 
-    def __greedy_reverse(self):
-        w = 0
-        item = 0
-        for i in reversed(self.__ratio):
-            if w + self.weights[i] <= self.weight_limit:
-                item |= 1 << i
-                w += self.weights[i]
-        return item
-
     def __get_fit(self, item):
         """Возвращает значение фитнес-функции для особи."""
         if item in self.__fitness_cache:
             return self.__fitness_cache[item]
 
-        selected_items = [((item >> i) & 1) for i in range(self.item_cnt)]
+        selected_items = [
+            bit == "1"
+            for bit in self.__mask.format(item)
+        ]
+
         fit = self.get_cost(selected_items)
 
         self.__fitness_cache[item] = fit
