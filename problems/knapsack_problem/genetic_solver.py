@@ -137,15 +137,18 @@ class GeneticSolver(KnapsackAbstractSolver):
 
     def __generate_population(self, population_cnt: int) -> dict[int:int]:
         """Генерирует начальную популяцию случайных особей."""
-        population = {}
-        max_value = 2 ** self.item_cnt
-        
-        while len(population) < population_cnt:
-            item = rnd.randint(0, max_value - 1)
-            if item not in population:
-                population[item] = self.__get_fit(item)
-        
-        return population
+        while True:
+            population = {}
+            max_value = 2 ** self.item_cnt
+            
+            while len(population) < population_cnt:
+                item = rnd.randint(0, max_value - 1)
+                if item not in population:
+                    population[item] = self.__get_fit(item)
+            
+            total_fitness = sum(population.values())
+            if total_fitness > 0:
+                return population
 
     def __cross_items(self, parent1: int, parent2: int) -> tuple[int, int]:
         """Одноточечное скрещивание двух особей."""
